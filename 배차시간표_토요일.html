@@ -10,7 +10,6 @@
 <meta name="theme-color" content="#2563eb">
 <title>101번 배차 관리</title>
 <style>
-/* 기존 스타일 그대로 유지 */
 *{margin:0;padding:0;box-sizing:border-box}
 html { background-color: #e2e8f0; height: 100%; display: flex; justify-content: center; }
 body { 
@@ -33,6 +32,40 @@ body {
 .tab { padding:7px 10px; border-radius:8px; font-size:12px; font-weight:bold; border:none; cursor:pointer; background:#f0f0f0; color:#555; transition: 0.2s; }
 .tab.active { background:#2563eb; color:#fff }
 .tab.print-btn { background:#10b981; color:#fff; } 
+
+/* 상단 퀵 메뉴 스타일 추가 */
+.quick-nav {
+    display: flex;
+    background: #fff;
+    padding: 6px 12px;
+    gap: 6px;
+    border-bottom: 1px solid #e2e8f0;
+    overflow-x: auto; 
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+}
+.quick-nav::-webkit-scrollbar { height: 0px; background: transparent; } /* 스크롤바 숨김 */
+.nav-btn {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    text-decoration: none;
+    color: #4a5568;
+    background: #edf2f7;
+    border: 1px solid #cbd5e0;
+}
+.nav-btn.active {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+}
+.nav-btn.home {
+    background: #4a5568;
+    color: #fff;
+    border-color: #4a5568;
+}
 
 .infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
 .infobar b { font-weight:bold }
@@ -65,7 +98,7 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 @media print {
     html, body { height: auto !important; width: auto !important; max-width: none !important; display: block !important; overflow: visible !important; background: #fff !important; }
-    .topbar, .note, #modal-bg { display: none !important; }
+    .topbar, .quick-nav, .note, #modal-bg { display: none !important; }
     .split-grid { display: block !important; }
     .page-break { page-break-before: always !important; }
     th { position: static !important; }
@@ -84,6 +117,15 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
     <button class="tab" onclick="openSettings()">⚙️</button>
   </div>
 </div>
+
+<div class="quick-nav">
+  <a href="index.html" class="nav-btn home">🏠 홈</a>
+  <a href="배차시간표_평일.html" id="link-weekday" class="nav-btn">평일</a>
+  <a href="배차시간표_토요일.html" id="link-saturday" class="nav-btn">토요일</a>
+  <a href="배차시간표_일요일.html" id="link-sunday" class="nav-btn">일요일</a>
+  <a href="배차시간표_방학.html" id="link-vacation" class="nav-btn">방학</a>
+</div>
+
 <div class="infobar" id="infobar"></div>
 <div class="content" id="content"></div>
 
@@ -101,15 +143,31 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
 </div>
 
 <script>
-// [추가] 서비스 워커(엔진) 등록 코드
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(console.error);
 }
 
-// 기존 데이터 로직 유지
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
 const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
-document.getElementById('appTitle').innerText = decodeURIComponent(fileName).replace('.html', '');
+
+// 앱 타이틀 자동 설정
+let displayTitle = decodeURIComponent(fileName).replace('.html', '');
+if(displayTitle === 'default_101') displayTitle = '101번 배차';
+document.getElementById('appTitle').innerText = displayTitle;
+
+// 페이지 로드 시 퀵 네비게이션 활성화
+window.addEventListener('DOMContentLoaded', () => {
+    const navLinks = {
+        '배차시간표_평일.html': 'link-weekday',
+        '배차시간표_토요일.html': 'link-saturday',
+        '배차시간표_일요일.html': 'link-sunday',
+        '배차시간표_방학.html': 'link-vacation'
+    };
+    const activeId = navLinks[decodeURIComponent(fileName)];
+    if (activeId) {
+        document.getElementById(activeId).classList.add('active');
+    }
+});
 
 let busCount=16, ratio=0.525, pmTrip=3, pmBus=4, currentView='integrated';
 const deps={}, tts={};
