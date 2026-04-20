@@ -100,16 +100,25 @@ function exitApp() {
         setTimeout(function() {
             document.body.innerHTML = `
                 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center; padding: 20px;">
-                    <h2 style="color:#2d3748; margin-bottom:15px; font-weight:900;">🚌 앱을 종료합니다</h2>
+                    <h2 style="color:#2d3748; margin-bottom:15px; font-weight:900;">🚌 앱이 종료되었습니다</h2>
                     <p style="color:#4a5568; font-size:15px; line-height: 1.5; margin-bottom: 30px;">
-                        스마트폰의 <b>[홈 버튼]</b>을 누르거나<br>
-                        <b>[뒤로 가기]</b>를 눌러 화면을 닫아주세요.
+                        스마트폰의 <b>[홈 버튼]</b>을 눌러 바탕화면으로 나가주세요.
                     </p>
-                    <a href="index.html" style="padding:12px 20px; background:#3182ce; color:white; text-decoration:none; border-radius:8px; font-weight:bold;">다시 시작하기</a>
                 </div>
             `;
+            
+            // [핵심 변경 1] 홈으로 나갔다가 앱 다시 켜면 리셋
+            document.addEventListener("visibilitychange", function() {
+                if (document.visibilityState === 'visible') {
+                    window.location.replace("index.html");
+                }
+            });
+
+            // [핵심 변경 2] 뒤로가기 누르면 메인 홈으로 이동
             window.history.pushState(null, null, window.location.href);
-            window.onpopstate = function () { window.history.go(1); };
+            window.onpopstate = function () {
+                window.location.replace("index.html");
+            };
         }, 100);
     }
 }
