@@ -33,7 +33,7 @@ body {
 .tab.active { background:#2563eb; color:#fff }
 .tab.print-btn { background:#10b981; color:#fff; } 
 
-/* 상단 퀵 메뉴 스타일 추가 */
+/* 퀵 메뉴 스타일 */
 .quick-nav {
     display: flex;
     background: #fff;
@@ -44,8 +44,9 @@ body {
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
     flex-shrink: 0;
+    align-items: center;
 }
-.quick-nav::-webkit-scrollbar { height: 0px; background: transparent; } /* 스크롤바 숨김 */
+.quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
 .nav-btn {
     padding: 6px 12px;
     border-radius: 20px;
@@ -55,17 +56,11 @@ body {
     color: #4a5568;
     background: #edf2f7;
     border: 1px solid #cbd5e0;
+    cursor: pointer;
 }
-.nav-btn.active {
-    background: #2563eb;
-    color: #fff;
-    border-color: #2563eb;
-}
-.nav-btn.home {
-    background: #4a5568;
-    color: #fff;
-    border-color: #4a5568;
-}
+.nav-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.nav-btn.home { background: #4a5568; color: #fff; border-color: #4a5568; }
+.nav-btn.exit { background: #e53e3e; color: #fff; border-color: #e53e3e; } /* 나가기 버튼 포인트 컬러 */
 
 .infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
 .infobar b { font-weight:bold }
@@ -119,6 +114,7 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
 </div>
 
 <div class="quick-nav">
+  <button onclick="exitApp()" class="nav-btn exit">🚪 나가기</button>
   <a href="index.html" class="nav-btn home">🏠 홈</a>
   <a href="배차시간표_평일.html" id="link-weekday" class="nav-btn">평일</a>
   <a href="배차시간표_토요일.html" id="link-saturday" class="nav-btn">토요일</a>
@@ -145,6 +141,14 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
 <script>
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(console.error);
+}
+
+// 앱 종료 함수
+function exitApp() {
+    if (confirm("앱을 종료하시겠습니까?")) {
+        window.close();
+        window.location.href = "about:blank"; // 강제 종료 안될시 빈화면 처리
+    }
 }
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';

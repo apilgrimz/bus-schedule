@@ -10,11 +10,12 @@
     body { font-family: 'Malgun Gothic', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
     .menu-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; width: 85%; max-width: 400px; }
     h1 { color: #2d3748; font-size: 22px; margin-bottom: 25px; font-weight: 900; }
-    a.btn { display: block; padding: 16px; margin-bottom: 12px; background: #3182ce; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s; }
-    a.btn:active { background: #2b6cb0; transform: translateY(2px); }
+    .btn { display: block; padding: 16px; margin-bottom: 12px; background: #3182ce; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s; cursor: pointer; border: none; width: 100%; box-sizing: border-box; }
+    .btn:active { background: #2b6cb0; transform: translateY(2px); }
     .btn-red { background: #e53e3e !important; }
     .btn-green { background: #38a169 !important; }
     .btn-purple { background: #805ad5 !important; }
+    .btn-gray { background: #718096 !important; margin-top: 25px; } /* 나가기 버튼 스타일 */
 </style>
 </head>
 <body>
@@ -27,11 +28,21 @@
     <a href="배차시간표_일요일.html" class="btn btn-red">일요일 배차시간표</a>
     <a href="배차시간표_방학.html" class="btn btn-purple">방학 배차시간표</a>
 
+    <button onclick="exitApp()" class="btn btn-gray">🚪 앱 나가기</button>
   </div>
 
   <script>
-      // 서비스 워커 등록 (앱 설치용)
+      // 서비스 워커 등록
       if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+
+      // 앱 종료 함수
+      function exitApp() {
+          if (confirm("앱을 종료하시겠습니까?")) {
+              window.close(); // PC 또는 일부 허용된 브라우저에서 창 닫기
+              // 모바일 등에서 close()가 안 먹힐 경우를 대비한 안전장치
+              window.location.href = "about:blank"; 
+          }
+      }
   </script>
 </body>
 </html>
