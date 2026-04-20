@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2b6cb0">
+<title>101번 배차 마스터</title>
+<style>
+    body { font-family: 'Malgun Gothic', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .menu-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; width: 85%; max-width: 400px; }
+    h1 { color: #2d3748; font-size: 22px; margin-bottom: 25px; font-weight: 900; }
+    a.btn { display: block; padding: 16px; margin-bottom: 12px; background: #3182ce; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s; }
+    a.btn:active { background: #2b6cb0; transform: translateY(2px); }
+    .btn-red { background: #e53e3e !important; }
+    .btn-green { background: #38a169 !important; }
+    .btn-purple { background: #805ad5 !important; }
+</style>
+</head>
+<body>
+
+  <div class="menu-box">
+    <h1>🚌 101번 배차 마스터</h1>
+    
+    <a href="배차시간표_평일.html" class="btn">평일 배차시간표</a>
+    <a href="배차시간표_토요일.html" class="btn btn-green">토요일 배차시간표</a>
+    <a href="배차시간표_일요일.html" class="btn btn-red">일요일 배차시간표</a>
+    <a href="배차시간표_방학.html" class="btn btn-purple">방학 배차시간표</a>
+
+  </div>
+
+  <script>
+      // 서비스 워커 등록 (앱 설치용)
+      if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+  </script>
+</body>
+</html>

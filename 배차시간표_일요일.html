@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<title>101번 배차 관리</title>
+<style>
+/* 기존 스타일 그대로 유지 */
+*{margin:0;padding:0;box-sizing:border-box}
+html { background-color: #e2e8f0; height: 100%; display: flex; justify-content: center; }
+body { 
+    font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; 
+    background:#f5f5f5; 
+    font-size:12px; 
+    -webkit-text-size-adjust:none; 
+    display:flex; 
+    flex-direction:column; 
+    height: 100%; 
+    width: 100%; 
+    max-width: 1000px; 
+    box-shadow: 0 0 20px rgba(0,0,0,0.15); 
+    overflow: hidden; 
+    margin: 0 auto;
+}
+.topbar { background:#fff; border-bottom:1px solid #ddd; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; z-index:20; box-shadow:0 1px 3px rgba(0,0,0,.08); flex-shrink:0; }
+.topbar h1 { font-size:14px; font-weight:bold; color: #2563eb; }
+.tabs { display:flex; gap:4px }
+.tab { padding:7px 10px; border-radius:8px; font-size:12px; font-weight:bold; border:none; cursor:pointer; background:#f0f0f0; color:#555; transition: 0.2s; }
+.tab.active { background:#2563eb; color:#fff }
+.tab.print-btn { background:#10b981; color:#fff; } 
+
+.infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
+.infobar b { font-weight:bold }
+
+.content { flex:1; overflow-y:auto; background:#f5f5f5; padding-bottom: 40px; }
+
+table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; }
+th { background:#dbeafe; border:1px solid #9ca3af; padding:2px; font-size:10px; text-align:center; position:sticky; top:0; z-index:10 }
+td { border:1px solid #d1d5db; text-align:center; padding:1px; font-size:11px }
+td.seq { font-weight:bold; background:#f8fafc; width:28px }
+td.dep-s { color:#dc2626; font-weight:bold }
+td.rest-bad { background:#fee2e2; color:#b91c1c }
+
+.input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
+.input-table input.s-val { color:#dc2626; font-weight:bold }
+
+.split-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 8px; align-items: start; }
+.split-item { width: 100%; overflow-x: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.1); border-radius: 4px; }
+@media (max-width: 650px) { .split-grid { grid-template-columns: 1fr; } }
+
+.section-title { text-align:center; font-size:13px; font-weight:bold; padding:6px; margin-bottom:0; background: #e2e8f0; }
+.section-am { color:#1e40af; border-top: 3px solid #1e40af; }
+.section-pm { color:#991b1b; border-top: 3px solid #991b1b; }
+
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
+.modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; }
+.modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
+.hidden { display:none }
+
+@media print {
+    html, body { height: auto !important; width: auto !important; max-width: none !important; display: block !important; overflow: visible !important; background: #fff !important; }
+    .topbar, .note, #modal-bg { display: none !important; }
+    .split-grid { display: block !important; }
+    .page-break { page-break-before: always !important; }
+    th { position: static !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1 id="appTitle">101번 배차</h1>
+  <div class="tabs">
+    <button class="tab active" onclick="switchView('integrated')">통합</button>
+    <button class="tab" onclick="switchView('split')">분리</button>
+    <button class="tab" onclick="switchView('input')">입력</button>
+    <button class="tab print-btn" onclick="window.print()">🖨️</button>
+    <button class="tab" onclick="openSettings()">⚙️</button>
+  </div>
+</div>
+<div class="infobar" id="infobar"></div>
+<div class="content" id="content"></div>
+
+<div class="modal-bg hidden" id="modal-bg" onclick="closeSettings()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>⚙️ 배차 설정</h3><br>
+    <div class="modal-row"><label>운행대수</label><div><input id="s-bc" type="number">대</div></div>
+    <div class="modal-row"><label>회차지비율</label><input id="s-rt" type="text" style="width:80px"></div>
+    <div class="modal-row"><label>오후시작</label><div><input id="s-pt" type="number" style="width:45px">회<input id="s-pb" type="number" style="width:45px">번</div></div>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+        <button style="flex:1; padding:10px; border-radius:8px; border:none; background:#eee;" onclick="closeSettings()">취소</button>
+        <button style="flex:1; padding:10px; border-radius:8px; border:none; background:#2563eb; color:white; font-weight:bold;" onclick="applySettings()">적용</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// [추가] 서비스 워커(엔진) 등록 코드
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(console.error);
+}
+
+// 기존 데이터 로직 유지
+const fileName = window.location.pathname.split('/').pop() || 'default_101';
+const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
+document.getElementById('appTitle').innerText = decodeURIComponent(fileName).replace('.html', '');
+
+let busCount=16, ratio=0.525, pmTrip=3, pmBus=4, currentView='integrated';
+const deps={}, tts={};
+
+function loadData() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        busCount = parsed.busCount || 16;
+        ratio = parsed.ratio || 0.525;
+        pmTrip = parsed.pmTrip || 3;
+        pmBus = parsed.pmBus || 4;
+        Object.assign(deps, parsed.deps || {});
+        Object.assign(tts, parsed.tts || {});
+    } else {
+        const dd={"1-1":"4:45","1-2":"7:45","3-3":"11:37","3-6":"22:15"};
+        Object.assign(deps, dd);
+    }
+}
+
+function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, deps, tts }));
+}
+
+function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
+function fmt(m,h24){if(m==null)return'—'; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
+
+function compute(){
+  const N=busCount, tot=N*6, seq=[];
+  for(let d=1;d<=tot;d++){
+    const trip=Math.floor((d-1)/N)+1, bus=((d-1)%N)+1;
+    const raw=deps[`${bus}-${trip}`];
+    const isS=typeof raw==='string'&&raw.toUpperCase()==='S';
+    const isA=raw!=null&&!isS&&pt(raw)!=null;
+    const val=isA?pt(raw):null;
+    const tt=tts[`${bus}-${trip}`];
+    seq.push({d,trip,bus,isS,isA,val,tt:tt!=null?Number(tt):null,act:!isS});
+  }
+  let cum=0; for(const s of seq){if(s.act)cum++;s.cum=cum;}
+  const anc=seq.filter(s=>s.isA);
+  
+  for(const s of seq){
+    s.pa=null;s.na=null;
+    for(let i=anc.length-1;i>=0;i--)if(anc[i].d<=s.d){s.pa=anc[i];break;}
+    for(let i=0;i<anc.length;i++)if(anc[i].d>=s.d){s.na=anc[i];break;}
+  }
+  for(const s of seq){
+    if(s.isS){s.ex='S';continue;}if(s.isA){s.ex=s.val;continue;}
+    if(!s.act||!s.pa||!s.na){s.ex=null;continue;}
+    if(s.pa.cum===s.na.cum){s.ex=s.pa.val;continue;}
+    s.ex=s.pa.val+(s.cum-s.pa.cum)/(s.na.cum-s.pa.cum)*(s.na.val-s.pa.val);
+  }
+  for(const s of seq){
+    if(s.trip<=1||s.d<=N){s.rest=null;continue;}
+    const p=seq[s.d-1-N];
+    if(!p||p.ex==null||p.ex==='S'||p.tt==null||s.ex==null||s.ex==='S'){s.rest=null;continue;}
+    s.rest=s.ex-(p.ex+p.tt);
+  }
+  for(let i=0;i<seq.length;i++){
+    const pr=i>0&&seq[i-1].rest!=null?seq[i-1].rest:null;
+    const nr=i<seq.length-1&&seq[i+1].rest!=null?seq[i+1].rest:null;
+    seq[i].anr=pr!=null&&nr!=null?(pr+nr)/2:pr??nr??null;
+  }
+  for(const s of seq){
+    if(s.isA||!s.act||!s.pa||!s.na||s.pa.cum===s.na.cum){s.ii=null;}
+    else{s.ii=(s.na.val-s.pa.val)/(s.na.cum-s.pa.cum);}
+    s.ifr=s.ii!=null?s.ii-Math.floor(s.ii):null;
+  }
+  let ce=0,pv=null;
+  for(const s of seq){
+    if(s.isA){s.fd=s.val;ce=0;pv=s.val;continue;}
+    if(s.isS){s.fd='S';continue;}
+    if(!s.act||s.ii==null||pv==null){s.fd=null;continue;} 
+    
+    const tc=ce+s.ifr;
+    if(tc>=1){s.fd=pv+Math.floor(s.ii)+1;ce=tc-1;}
+    else if(tc>=.49&&tc<=.51){
+      if(s.rest!=null&&s.anr!=null){
+        if(s.rest<=s.anr){s.fd=pv+Math.floor(s.ii)+1;ce=tc-1;}
+        else{s.fd=pv+Math.floor(s.ii);ce=tc;}
+      }else{s.fd=pv+Math.round(s.ii);ce=tc>=1?tc-1:tc;}
+    }else{s.fd=pv+Math.floor(s.ii);ce=tc;}
+    pv=s.fd;
+  }
+  for(const s of seq){
+    if(s.fd!=null&&s.fd!=='S'&&s.tt!=null){s.mp=s.fd+s.tt*ratio;s.ar=s.fd+s.tt;}
+  }
+  for(const s of seq){
+    if(s.trip<=1||s.d<=N){s.dr=null;continue;}
+    const p=seq[s.d-1-N];
+    if(!p||p.fd==null||p.fd==='S'||p.tt==null||s.fd==null||s.fd==='S'){s.dr=null;continue;}
+    s.dr=Math.round(s.fd-(p.fd+p.tt));
+  }
+  return seq;
+}
+
+let schedule;
+const gs=(b,t)=>schedule.find(s=>s.bus===b&&s.trip===t);
+
+function render(){
+    document.getElementById('infobar').innerHTML=`<span><b>${busCount}</b>대</span><span>비율 <b>${ratio}</b></span><span>오후 <b>${pmTrip}회${pmBus}번</b>~</span>`;
+    const c=document.getElementById('content');
+    if(currentView==='integrated') renderIntegrated(c);
+    else if(currentView==='split') renderSplit(c);
+    else renderInput(c);
+}
+
+function busRows(bus,slots){
+    let r1=`<td rowspan="3" class="seq">${bus}</td>`, r2='', r3='';
+    slots.forEach((s,i)=>{
+        const isS=s&&s.fd==='S'; r1+=`<td colspan="2" class="${isS?'dep-s':''}">${s?fmt(s.fd):''}</td>`;
+        if(i<slots.length-1){ const ns=slots[i+1]; r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}">${ns&&ns.dr!=null?ns.dr:''}</td>`; }
+        r2+=`<td class="tt">${s&&s.tt||''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
+        r3+=`<td colspan="2" class="bus-sep arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
+    });
+    return `<tr>${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>`;
+}
+
+function thead(trips){
+    let h='<tr><th style="width:28px">순번</th>';
+    trips.forEach((t,i)=>{ h+=`<th colspan="2">${t}회</th>`; if(i<trips.length-1) h+=`<th style="width:28px">휴식</th>`; });
+    return `<thead>${h}</tr></thead>`;
+}
+
+function renderIntegrated(el){
+    let h=`<div style="padding:8px"><table>${thead([1,2,3,4,5,6])}<tbody>`;
+    for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3,4,5,6].map(t=>gs(b,t)));
+    el.innerHTML=h+'</tbody></table></div>';
+}
+
+function renderSplit(el){
+    const splitD=(pmTrip-1)*busCount+pmBus;
+    let h='<div class="split-grid"><div class="split-item"><div class="section-title section-am">오전</div><table>'+thead([1,2,3])+'<tbody>';
+    for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+    h+='</tbody></table></div><div class="split-item page-break"><div class="section-title section-pm">오후 ('+pmTrip+'회'+pmBus+'번~)</div><table>'+thead([1,2,3])+'<tbody>';
+    for(let p=0;p<busCount;p++){
+        const b=((pmBus-1+p)%busCount)+1;
+        h+=busRows(b,[1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
+    }
+    el.innerHTML=h+'</tbody></table></div></div>';
+}
+
+function renderInput(el){
+    let h='<div style="padding:8px"><table class="input-table"><thead><tr><th style="width:24px">번</th>';
+    for(let t=1;t<=6;t++) h+=`<th>${t}출발</th><th style="width:36px">운행</th>`;
+    h+='</tr></thead><tbody>';
+    for(let b=1;b<=busCount;b++){
+        h+=`<tr><td style="font-weight:bold;background:#f8fafc;">${b}</td>`;
+        for(let t=1;t<=6;t++){
+            const dk=`${b}-${t}`, dv=deps[dk]||'', tv=tts[dk]||'';
+            h+=`<td><input class="${dv.toUpperCase()==='S'?'s-val':''}" value="${dv}" data-type="dep" data-bus="${b}" data-trip="${t}" onblur="onInput(this)" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
+            h+=`<td><input value="${tv}" data-type="tt" data-bus="${b}" data-trip="${t}" onblur="onInput(this)" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
+        }
+        h+='</tr>';
+    }
+    el.innerHTML=h+'</tbody></table></div>';
+}
+
+function onInput(el){
+    const b=el.dataset.bus, t=el.dataset.trip, v=el.value.trim();
+    if(el.dataset.type==='dep'){ if(!v) delete deps[`${b}-${t}`]; else deps[`${b}-${t}`]=v; }
+    else { if(!v) delete tts[`${b}-${t}`]; else tts[`${b}-${t}`]=v; }
+    saveData(); schedule=compute();
+}
+
+function switchView(v){
+    currentView=v; document.querySelectorAll('.tab').forEach((t,i)=>{
+        if(i<3) t.classList.toggle('active',['integrated','split','input'][i]===v);
+    });
+    schedule=compute(); render();
+}
+
+function openSettings(){
+    document.getElementById('s-bc').value=busCount; document.getElementById('s-rt').value=ratio;
+    document.getElementById('s-pt').value=pmTrip; document.getElementById('s-pb').value=pmBus;
+    document.getElementById('modal-bg').classList.remove('hidden');
+}
+function closeSettings(){document.getElementById('modal-bg').classList.add('hidden');}
+function applySettings(){
+    busCount=Number(document.getElementById('s-bc').value); ratio=Number(document.getElementById('s-rt').value);
+    pmTrip=Number(document.getElementById('s-pt').value); pmBus=Number(document.getElementById('s-pb').value);
+    closeSettings(); saveData(); schedule=compute(); render();
+}
+
+loadData(); schedule=compute(); render();
+</script>
+</body>
+</html>
