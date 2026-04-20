@@ -12,20 +12,8 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html { background-color: #e2e8f0; height: 100%; display: flex; justify-content: center; }
-body { 
-    font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; 
-    background:#f5f5f5; 
-    font-size:12px; 
-    -webkit-text-size-adjust:none; 
-    display:flex; 
-    flex-direction:column; 
-    height: 100%; 
-    width: 100%; 
-    max-width: 1000px; 
-    box-shadow: 0 0 20px rgba(0,0,0,0.15); 
-    overflow: hidden; 
-    margin: 0 auto;
-}
+body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:#f5f5f5; font-size:12px; -webkit-text-size-adjust:none; display:flex; flex-direction:column; height: 100%; width: 100%; max-width: 1000px; box-shadow: 0 0 20px rgba(0,0,0,0.15); overflow: hidden; margin: 0 auto; }
+
 .topbar { background:#fff; border-bottom:1px solid #ddd; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; z-index:20; box-shadow:0 1px 3px rgba(0,0,0,.08); flex-shrink:0; }
 .topbar h1 { font-size:14px; font-weight:bold; color: #2563eb; }
 .tabs { display:flex; gap:4px }
@@ -33,38 +21,15 @@ body {
 .tab.active { background:#2563eb; color:#fff }
 .tab.print-btn { background:#10b981; color:#fff; } 
 
-/* 퀵 메뉴 스타일 */
-.quick-nav {
-    display: flex;
-    background: #fff;
-    padding: 6px 12px;
-    gap: 6px;
-    border-bottom: 1px solid #e2e8f0;
-    overflow-x: auto; 
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-    flex-shrink: 0;
-    align-items: center;
-}
+.quick-nav { display: flex; background: #fff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; align-items: center; }
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
-.nav-btn {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: bold;
-    text-decoration: none;
-    color: #4a5568;
-    background: #edf2f7;
-    border: 1px solid #cbd5e0;
-    cursor: pointer;
-}
+.nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; }
 .nav-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 .nav-btn.home { background: #4a5568; color: #fff; border-color: #4a5568; }
 .nav-btn.exit { background: #e53e3e; color: #fff; border-color: #e53e3e; } 
 
 .infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
 .infobar b { font-weight:bold }
-
 .content { flex:1; overflow-y:auto; background:#f5f5f5; padding-bottom: 40px; }
 
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; }
@@ -75,16 +40,6 @@ td.dep-s { color:#dc2626; font-weight:bold }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
-.input-table input.s-val { color:#dc2626; font-weight:bold }
-
-.split-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 8px; align-items: start; }
-.split-item { width: 100%; overflow-x: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.1); border-radius: 4px; }
-@media (max-width: 650px) { .split-grid { grid-template-columns: 1fr; } }
-
-.section-title { text-align:center; font-size:13px; font-weight:bold; padding:6px; margin-bottom:0; background: #e2e8f0; }
-.section-am { color:#1e40af; border-top: 3px solid #1e40af; }
-.section-pm { color:#991b1b; border-top: 3px solid #991b1b; }
-
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
 .modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; }
 .modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
@@ -93,9 +48,7 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 @media print {
     html, body { height: auto !important; width: auto !important; max-width: none !important; display: block !important; overflow: visible !important; background: #fff !important; }
-    .topbar, .quick-nav, .note, #modal-bg { display: none !important; }
-    .split-grid { display: block !important; }
-    .page-break { page-break-before: always !important; }
+    .topbar, .quick-nav, #modal-bg { display: none !important; }
     th { position: static !important; }
 }
 </style>
@@ -139,35 +92,32 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
 </div>
 
 <script>
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(console.error);
-}
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(console.error); }
 
-// 앱 종료 함수 (개선됨)
 function exitApp() {
     if (confirm("앱을 종료하시겠습니까?")) {
-        window.close();
+        window.open('','_self').close();
         setTimeout(function() {
             document.body.innerHTML = `
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center;">
-                    <h2 style="color:#2d3748; margin-bottom:10px; font-weight:900;">🚌 시스템이 종료되었습니다</h2>
-                    <p style="color:#4a5568; margin-bottom:25px; font-size:14px;">열려 있는 창이나 앱을 완전히 닫아주시면 됩니다.</p>
-                    <a href="index.html" style="padding:14px 24px; background:#3182ce; color:white; text-decoration:none; border-radius:8px; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">다시 홈으로 돌아가기</a>
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center; padding: 20px;">
+                    <h2 style="color:#2d3748; margin-bottom:15px; font-weight:900;">🚌 앱을 종료합니다</h2>
+                    <p style="color:#4a5568; font-size:15px; line-height: 1.5; margin-bottom: 30px;">
+                        스마트폰의 <b>[홈 버튼]</b>을 누르거나<br>
+                        <b>[뒤로 가기]</b>를 눌러 화면을 닫아주세요.
+                    </p>
+                    <a href="index.html" style="padding:12px 20px; background:#3182ce; color:white; text-decoration:none; border-radius:8px; font-weight:bold;">다시 시작하기</a>
                 </div>
             `;
+            window.history.pushState(null, null, window.location.href);
+            window.onpopstate = function () { window.history.go(1); };
         }, 100);
     }
 }
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
 const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
+document.getElementById('appTitle').innerText = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
 
-// 앱 타이틀 자동 설정
-let displayTitle = decodeURIComponent(fileName).replace('.html', '');
-if(displayTitle === 'default_101') displayTitle = '101번 배차';
-document.getElementById('appTitle').innerText = displayTitle;
-
-// 페이지 로드 시 퀵 네비게이션 활성화
 window.addEventListener('DOMContentLoaded', () => {
     const navLinks = {
         '배차시간표_평일.html': 'link-weekday',
@@ -176,9 +126,7 @@ window.addEventListener('DOMContentLoaded', () => {
         '배차시간표_방학.html': 'link-vacation'
     };
     const activeId = navLinks[decodeURIComponent(fileName)];
-    if (activeId) {
-        document.getElementById(activeId).classList.add('active');
-    }
+    if (activeId) document.getElementById(activeId).classList.add('active');
 });
 
 let busCount=16, ratio=0.525, pmTrip=3, pmBus=4, currentView='integrated';
@@ -200,10 +148,7 @@ function loadData() {
     }
 }
 
-function saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, deps, tts }));
-}
-
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, deps, tts })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 function fmt(m,h24){if(m==null)return'—'; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
@@ -220,7 +165,6 @@ function compute(){
   }
   let cum=0; for(const s of seq){if(s.act)cum++;s.cum=cum;}
   const anc=seq.filter(s=>s.isA);
-  
   for(const s of seq){
     s.pa=null;s.na=null;
     for(let i=anc.length-1;i>=0;i--)if(anc[i].d<=s.d){s.pa=anc[i];break;}
@@ -253,7 +197,6 @@ function compute(){
     if(s.isA){s.fd=s.val;ce=0;pv=s.val;continue;}
     if(s.isS){s.fd='S';continue;}
     if(!s.act||s.ii==null||pv==null){s.fd=null;continue;} 
-    
     const tc=ce+s.ifr;
     if(tc>=1){s.fd=pv+Math.floor(s.ii)+1;ce=tc-1;}
     else if(tc>=.49&&tc<=.51){
@@ -264,9 +207,7 @@ function compute(){
     }else{s.fd=pv+Math.floor(s.ii);ce=tc;}
     pv=s.fd;
   }
-  for(const s of seq){
-    if(s.fd!=null&&s.fd!=='S'&&s.tt!=null){s.mp=s.fd+s.tt*ratio;s.ar=s.fd+s.tt;}
-  }
+  for(const s of seq){ if(s.fd!=null&&s.fd!=='S'&&s.tt!=null){s.mp=s.fd+s.tt*ratio;s.ar=s.fd+s.tt;} }
   for(const s of seq){
     if(s.trip<=1||s.d<=N){s.dr=null;continue;}
     const p=seq[s.d-1-N];
@@ -315,10 +256,7 @@ function renderSplit(el){
     let h='<div class="split-grid"><div class="split-item"><div class="section-title section-am">오전</div><table>'+thead([1,2,3])+'<tbody>';
     for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
     h+='</tbody></table></div><div class="split-item page-break"><div class="section-title section-pm">오후 ('+pmTrip+'회'+pmBus+'번~)</div><table>'+thead([1,2,3])+'<tbody>';
-    for(let p=0;p<busCount;p++){
-        const b=((pmBus-1+p)%busCount)+1;
-        h+=busRows(b,[1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
-    }
+    for(let p=0;p<busCount;p++){ const b=((pmBus-1+p)%busCount)+1; h+=busRows(b,[1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;})); }
     el.innerHTML=h+'</tbody></table></div></div>';
 }
 
@@ -330,8 +268,8 @@ function renderInput(el){
         h+=`<tr><td style="font-weight:bold;background:#f8fafc;">${b}</td>`;
         for(let t=1;t<=6;t++){
             const dk=`${b}-${t}`, dv=deps[dk]||'', tv=tts[dk]||'';
-            h+=`<td><input class="${dv.toUpperCase()==='S'?'s-val':''}" value="${dv}" data-type="dep" data-bus="${b}" data-trip="${t}" onblur="onInput(this)" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
-            h+=`<td><input value="${tv}" data-type="tt" data-bus="${b}" data-trip="${t}" onblur="onInput(this)" onkeydown="if(event.key==='Enter')this.blur()"></td>`;
+            h+=`<td><input class="${dv.toUpperCase()==='S'?'s-val':''}" value="${dv}" data-type="dep" data-bus="${b}" data-trip="${t}" onblur="onInput(this)"></td>`;
+            h+=`<td><input value="${tv}" data-type="tt" data-bus="${b}" data-trip="${t}" onblur="onInput(this)"></td>`;
         }
         h+='</tr>';
     }
@@ -346,9 +284,7 @@ function onInput(el){
 }
 
 function switchView(v){
-    currentView=v; document.querySelectorAll('.tab').forEach((t,i)=>{
-        if(i<3) t.classList.toggle('active',['integrated','split','input'][i]===v);
-    });
+    currentView=v; document.querySelectorAll('.tab').forEach((t,i)=>{ if(i<3) t.classList.toggle('active',['integrated','split','input'][i]===v); });
     schedule=compute(); render();
 }
 

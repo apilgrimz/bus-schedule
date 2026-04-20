@@ -34,18 +34,22 @@
   <script>
       if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 
-      // 앱 종료 함수 (개선됨)
       function exitApp() {
           if (confirm("앱을 종료하시겠습니까?")) {
-              window.close(); 
+              window.open('','_self').close(); 
               setTimeout(function() {
                   document.body.innerHTML = `
-                      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center;">
-                          <h2 style="color:#2d3748; margin-bottom:10px; font-weight:900;">🚌 시스템이 종료되었습니다</h2>
-                          <p style="color:#4a5568; margin-bottom:25px; font-size:14px;">열려 있는 창이나 앱을 완전히 닫아주시면 됩니다.</p>
-                          <a href="index.html" style="padding:14px 24px; background:#3182ce; color:white; text-decoration:none; border-radius:8px; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">다시 홈으로 돌아가기</a>
+                      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center; padding: 20px;">
+                          <h2 style="color:#2d3748; margin-bottom:15px; font-weight:900;">🚌 앱을 종료합니다</h2>
+                          <p style="color:#4a5568; font-size:15px; line-height: 1.5; margin-bottom: 30px;">
+                              스마트폰의 <b>[홈 버튼]</b>을 누르거나<br>
+                              <b>[뒤로 가기]</b>를 눌러 화면을 닫아주세요.
+                          </p>
+                          <a href="index.html" style="padding:12px 20px; background:#3182ce; color:white; text-decoration:none; border-radius:8px; font-weight:bold;">다시 시작하기</a>
                       </div>
                   `;
+                  window.history.pushState(null, null, window.location.href);
+                  window.onpopstate = function () { window.history.go(1); };
               }, 100);
           }
       }
