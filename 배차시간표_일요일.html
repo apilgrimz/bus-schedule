@@ -60,7 +60,7 @@ body {
 }
 .nav-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 .nav-btn.home { background: #4a5568; color: #fff; border-color: #4a5568; }
-.nav-btn.exit { background: #e53e3e; color: #fff; border-color: #e53e3e; } /* 나가기 버튼 포인트 컬러 */
+.nav-btn.exit { background: #e53e3e; color: #fff; border-color: #e53e3e; } 
 
 .infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
 .infobar b { font-weight:bold }
@@ -143,11 +143,19 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(console.error);
 }
 
-// 앱 종료 함수
+// 앱 종료 함수 (개선됨)
 function exitApp() {
     if (confirm("앱을 종료하시겠습니까?")) {
         window.close();
-        window.location.href = "about:blank"; // 강제 종료 안될시 빈화면 처리
+        setTimeout(function() {
+            document.body.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center;">
+                    <h2 style="color:#2d3748; margin-bottom:10px; font-weight:900;">🚌 시스템이 종료되었습니다</h2>
+                    <p style="color:#4a5568; margin-bottom:25px; font-size:14px;">열려 있는 창이나 앱을 완전히 닫아주시면 됩니다.</p>
+                    <a href="index.html" style="padding:14px 24px; background:#3182ce; color:white; text-decoration:none; border-radius:8px; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">다시 홈으로 돌아가기</a>
+                </div>
+            `;
+        }, 100);
     }
 }
 

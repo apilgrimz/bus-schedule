@@ -15,7 +15,7 @@
     .btn-red { background: #e53e3e !important; }
     .btn-green { background: #38a169 !important; }
     .btn-purple { background: #805ad5 !important; }
-    .btn-gray { background: #718096 !important; margin-top: 25px; } /* 나가기 버튼 스타일 */
+    .btn-gray { background: #718096 !important; margin-top: 25px; } 
 </style>
 </head>
 <body>
@@ -32,15 +32,21 @@
   </div>
 
   <script>
-      // 서비스 워커 등록
       if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 
-      // 앱 종료 함수
+      // 앱 종료 함수 (개선됨)
       function exitApp() {
           if (confirm("앱을 종료하시겠습니까?")) {
-              window.close(); // PC 또는 일부 허용된 브라우저에서 창 닫기
-              // 모바일 등에서 close()가 안 먹힐 경우를 대비한 안전장치
-              window.location.href = "about:blank"; 
+              window.close(); 
+              setTimeout(function() {
+                  document.body.innerHTML = `
+                      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center;">
+                          <h2 style="color:#2d3748; margin-bottom:10px; font-weight:900;">🚌 시스템이 종료되었습니다</h2>
+                          <p style="color:#4a5568; margin-bottom:25px; font-size:14px;">열려 있는 창이나 앱을 완전히 닫아주시면 됩니다.</p>
+                          <a href="index.html" style="padding:14px 24px; background:#3182ce; color:white; text-decoration:none; border-radius:8px; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">다시 홈으로 돌아가기</a>
+                      </div>
+                  `;
+              }, 100);
           }
       }
   </script>
