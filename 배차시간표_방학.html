@@ -50,33 +50,32 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
+/* 오전/오후 및 운행대수 같은 줄 정렬 스타일 (일반 뷰) */
 .split-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #1e40af; }
 .split-header.pm { border-bottom-color: #991b1b; }
 .split-header .title { font-size: 16px; font-weight: 900; color: #1e40af; }
 .split-header.pm .title { color: #991b1b; }
 .split-header .info { font-size: 14px; font-weight: bold; color: #475569; }
 
-/* === [핵심] 인쇄(PDF)를 사진 전송과 완벽하게 동일하게 만드는 마법의 CSS === */
+/* === [핵심] 인쇄(PDF) 모드 시 캡처용 디자인으로 완벽 덮어쓰기 === */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; background: #fff !important; margin: 0 !important; padding: 0 !important; }
-    @page { size: A4 portrait; margin: 0; }
+    @page { size: A4 portrait; margin: 0; } 
     
-    /* 기본 화면은 전부 숨기고, 우리가 새로 만든 정밀 프린트 컨테이너만 보여줍니다. */
+    /* 기본 앱 화면은 통째로 숨김 */
     body.custom-printing > :not(#print-container) { display: none !important; }
+    
+    /* 우리가 만든 정밀 렌더링 도화지 노출 */
     body.custom-printing #print-container { display: block !important; width: 100%; background: #fff; }
     
     .custom-print-page {
-        width: 794px; /* A4 픽셀 고정 */
-        height: 1123px; /* A4 픽셀 고정 */
-        padding: 40px 30px;
-        box-sizing: border-box;
-        page-break-after: always;
-        break-after: page;
-        display: flex;
-        flex-direction: column;
-        background: #ffffff;
+        width: 794px !important;
+        height: 1123px !important;
         margin: 0 auto;
+        page-break-after: always !important;
+        break-after: page !important;
+        overflow: hidden !important;
     }
 }
 </style>
@@ -90,7 +89,8 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
     <button class="tab" onclick="switchView('split')">분리</button>
     <button class="tab" onclick="switchView('input')">입력</button>
     <button class="tab share-btn" onclick="openShareModal()">📷 전송</button>
-    <button class="tab print-btn" onclick="triggerPrint()">🖨️</button> <button class="tab" onclick="openSettings()">⚙️</button>
+    <button class="tab print-btn" onclick="triggerPrint()">🖨️</button>
+    <button class="tab" onclick="openSettings()">⚙️</button>
   </div>
 </div>
 
@@ -104,6 +104,7 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 
 <div class="infobar" id="infobar"></div>
 <div class="content" id="content"></div>
+
 <div id="print-container"></div>
 
 <div class="modal-bg hidden" id="modal-bg" onclick="closeSettings()">
@@ -121,7 +122,7 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 
 <div class="modal-bg hidden" id="share-modal-bg" onclick="closeShareModal()">
   <div class="modal" onclick="event.stopPropagation()">
-    <h3 style="margin-bottom:20px">📷 시간표 사진 전송</h3>
+    <h3 style="margin-bottom:20px">📷 시간표 전송/인쇄</h3>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; font-weight:bold; font-size:14px;" onclick="captureAndShare('integrated')">통합 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold; font-size:14px;" onclick="captureAndShare('am')">오전 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold; font-size:14px;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
@@ -139,9 +140,10 @@ window.onpopstate = function () {
 };
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
-const STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
-let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
+// [데이터 완벽 복구] v2를 지우고 예전 사용하시던 기존 오리지널 키명으로 되돌렸습니다!!
+const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
 
+let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
 const busNum = localStorage.getItem('busNumber') || '101';
 document.getElementById('appTitle').innerText = `${busNum}번 ${displayTitle}`;
 
@@ -349,17 +351,27 @@ function openShareModal() { document.getElementById('share-modal-bg').classList.
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
 /* ========================================================================= */
-/* [핵심 마법] 사진 전송과 인쇄(PDF)가 100% 동일하게 렌더링 되도록 해주는 공통 함수 */
+/* [마스터 함수] 사진 전송과 인쇄(PDF)의 레이아웃과 디자인을 100% 일치시킵니다 */
 /* ========================================================================= */
 function getScheduleHTML(target) {
-    let titleSuffix = '';
-    if (target === 'am') titleSuffix = ' (오전)';
-    if (target === 'pm') titleSuffix = ' (오후)';
-    if (target === 'integrated') titleSuffix = ' (통합)';
-    const exportTitle = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
+    // 1. 요청하신 완벽한 제목 포맷: "101번 배차 시간표(방학)"
+    const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
+    
+    let leftText = '';
+    if (target === 'am') leftText = '오전';
+    if (target === 'pm') leftText = '오후';
 
-    let contentHTML = `<h2 style="text-align:center; margin:0 0 15px 0; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
+    // 2. 통합 모드일 때는 제목만 중앙에, 분리 모드일 때는 양쪽에 오전/오후와 운행대수 배치
+    let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
+    
+    if (target === 'integrated') {
+        contentHTML += `<div style="text-align:right; margin-bottom:10px; padding-bottom:5px; font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
+    } else {
+        contentHTML += `<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px; border-bottom:2px solid #1e3a8a; padding-bottom:5px;">`;
+        contentHTML += `<div style="font-size:24px; font-weight:900; color:#1e3a8a;">${leftText}</div>`;
+        contentHTML += `<div style="font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
+        contentHTML += `</div>`;
+    }
 
     let hasAnyTT = false;
     for(let key in tts) {
@@ -370,22 +382,22 @@ function getScheduleHTML(target) {
     const totalRows = hasAnyTT ? busCount * 3 : busCount; 
     const exactCellHeight = maxTableHeight / (totalRows + 1); 
     
-    const fsSeq = hasAnyTT ? Math.max(9, Math.floor(exactCellHeight * 0.65)) : Math.max(10, Math.floor(exactCellHeight * 0.50)); 
-    const fsTime = hasAnyTT ? Math.max(10, Math.floor(exactCellHeight * 0.75)) : Math.max(10, Math.floor(exactCellHeight * 0.60)); 
-    const fsSub = Math.max(11, Math.floor(exactCellHeight * 0.60)); 
-    const fsDepOnly = Math.max(14, Math.floor(exactCellHeight * 0.60)); 
+    const fsSeq = Math.max(10, Math.floor(22 * Math.min(1, 48 / totalRows))); 
+    const fsTime = Math.max(11, Math.floor(26 * Math.min(1, 48 / totalRows))); 
+    const fsSub = Math.max(9, Math.floor(14 * Math.min(1, 48 / totalRows))); 
+    const fsDepOnly = Math.max(14, Math.floor(32 * Math.min(1, 48 / totalRows))); 
 
     let tableHTML = `<style>
-        .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; }
-        .export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; box-sizing:border-box; }
-        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(12, Math.floor(exactCellHeight * 0.5))}px; font-weight:800; color:#1e293b; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.dep-s { color:#dc2626; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; min-height: 0; }
+        .export-wrapper table { flex: 1; border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border: 2px solid #94a3b8; }
+        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(11, Math.floor(16 * Math.min(1, 48 / totalRows)))}px; font-weight:800; color:#1e293b; padding:2px !important; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding: 2px; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; }
+        .export-wrapper td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; }
+        .export-wrapper td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; }
+        .export-wrapper td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; }
+        .export-wrapper td.dep-s { color:#dc2626; }
+        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; }
         .export-wrapper td.tt { border-right:1px dashed #e2e8f0; }
     </style><div class="export-wrapper">`;
 
@@ -434,7 +446,7 @@ function getScheduleHTML(target) {
     return contentHTML + tableHTML;
 }
 
-// [사진 전송 실행] 위 공통 함수를 사용하여 이미지 생성
+// [사진 전송 기능]
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -467,13 +479,13 @@ async function captureAndShare(target) {
             if (target === 'am') titleSuffix = ' (오전)';
             if (target === 'pm') titleSuffix = ' (오후)';
             if (target === 'integrated') titleSuffix = ' (통합)';
-            const exportTitle = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
+            const exportFileName = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
             
-            const file = new File([blob], `${exportTitle}.png`, { type: 'image/png' });
+            const file = new File([blob], `${exportFileName}.png`, { type: 'image/png' });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try { await navigator.share({ files: [file], title: exportTitle, text: '배차 시간표를 공유합니다.' }); } 
-                catch (err) { downloadBlob(blob, `${exportTitle}.png`); }
-            } else { downloadBlob(blob, `${exportTitle}.png`); }
+                try { await navigator.share({ files: [file], title: exportFileName, text: '배차 시간표를 공유합니다.' }); } 
+                catch (err) { downloadBlob(blob, `${exportFileName}.png`); }
+            } else { downloadBlob(blob, `${exportFileName}.png`); }
             document.body.removeChild(exportDiv);
             document.body.removeChild(loading);
         }, 'image/png');
@@ -496,7 +508,7 @@ function downloadBlob(blob, filename) {
     document.body.removeChild(a);
 }
 
-// [인쇄(PDF) 실행] 위 공통 함수를 사용하여 브라우저 인쇄 화면 강제 호출
+// [인쇄 기능] PDF에서도 사진과 동일한 디자인을 강제 적용합니다.
 function triggerPrint() {
     if (currentView === 'input') {
         document.body.classList.remove('custom-printing');
@@ -520,11 +532,13 @@ function triggerPrint() {
         page.innerHTML = getScheduleHTML('integrated');
         printContainer.appendChild(page);
     } else if (currentView === 'split') {
+        // 오전 페이지 생성
         const page1 = document.createElement('div');
         page1.className = 'custom-print-page';
         page1.innerHTML = getScheduleHTML('am');
         printContainer.appendChild(page1);
         
+        // 오후 페이지 생성 (다음 장으로 넘어감)
         const page2 = document.createElement('div');
         page2.className = 'custom-print-page';
         page2.innerHTML = getScheduleHTML('pm');
