@@ -40,7 +40,6 @@ td.seq { font-weight:bold; background:#f8fafc; width:28px }
 td.dep-s { color:#dc2626; font-weight:bold }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-/* [일반 화면 개선] 운행/회차시간 삐져나옴 완벽 차단 */
 td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 0; line-height: 1.1; }
 td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 
@@ -51,19 +50,35 @@ td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* [인쇄 최적화] 분리 시 오전/오후 페이지 넘김 완벽 보장 */
-@page { size: A4 portrait; margin: 10mm; }
+/* [인쇄(프린트) 완벽 최적화] */
 @media print {
-    html, body { height: 100% !important; background: #fff !important; overflow: visible !important; }
-    .topbar, .quick-nav, #modal-bg, #share-modal-bg { display: none !important; }
-    .content { overflow: visible !important; height: auto !important; padding: 0 !important; }
-    th { position: static !important; }
-    /* 한 페이지 예쁜 비율 차지 (통합 모드용) */
-    table { height: 95vh !important; }
-    /* 분리 모드 강제 페이지 나눔 */
-    .split-grid { display: block !important; width: 100% !important; }
-    .split-item { margin-bottom: 20px !important; }
+    html, body { height: 100% !important; background: #fff !important; overflow: visible !important; margin: 0 !important; }
+    .topbar, .quick-nav, #modal-bg, #share-modal-bg, .print-hide { display: none !important; }
+    .content { overflow: visible !important; height: auto !important; padding: 0 !important; background: #fff !important; }
+    
+    /* 운행대수 강조 및 나머지 정보 숨김 */
+    .infobar { background: transparent !important; border: none !important; display: flex !important; justify-content: flex-end !important; padding: 0 5px 10px 0 !important; }
+    .print-enlarge { font-size: 16px !important; font-weight: bold !important; color: #475569 !important; }
+    
+    /* 표 사이즈를 A4 한장에 꽉 차게 조절 */
+    .print-full-page { height: 95vh !important; box-sizing: border-box; }
+    .split-grid { display: block !important; height: auto !important; padding: 0 !important; }
+    .split-item { height: 95vh !important; width: 100% !important; margin: 0 !important; display: flex; flex-direction: column; }
+    table { height: 100% !important; width: 100% !important; box-sizing: border-box; }
+    
+    /* 인쇄용 폰트 대폭 확대 및 색상 일치 */
+    th { position: static !important; font-size: 14px !important; padding: 6px !important; background: #e2e8f0 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
+    td { font-size: 14px !important; padding: 2px !important; }
+    td.seq { font-size: 16px !important; background: #f8fafc !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
+    td.dep, td.arr { font-size: 16px !important; font-weight: bold !important; color: #1d4ed8 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
+    td.dep-only { font-size: 20px !important; font-weight: bold !important; color: #1d4ed8 !important; }
+    td.dep-s { color: #dc2626 !important; }
+    td.tt, td.hj { font-size: 12px !important; color: #64748b !important; border-top: 1px dashed #e2e8f0 !important; border-bottom: 1px dashed #e2e8f0 !important; }
+    td.rest-bad { background: #fee2e2 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
+    
+    /* 오전/오후 페이지 완벽 분리 */
     .page-break { page-break-before: always !important; break-before: page !important; }
+    .section-title { font-size: 16px !important; margin-bottom: 10px !important; }
 }
 </style>
 </head>
@@ -118,14 +133,7 @@ td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 <script>
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(console.error); }
 
-// [핵심] 귀찮은 알림 팝업 없이 즉시 브라우저 백/종료 처리
-window.history.pushState(null, null, window.location.href);
-window.onpopstate = function () {
-    window.open('','_self').close();
-    setTimeout(function() {
-        window.location.replace("about:blank"); // 실패 시 무음 빈 화면 전환
-    }, 10);
-};
+// 백지 화면이 뜨지 않도록 억지 종료 로직을 싹 지웠습니다. 스마트폰 뒤로 가기가 자연스럽게 작동합니다.
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
 const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
@@ -236,7 +244,8 @@ let schedule;
 const gs=(b,t)=>schedule.find(s=>s.bus===b&&s.trip===t);
 
 function render(){
-    document.getElementById('infobar').innerHTML=`<span><b>${busCount}</b>대</span><span>비율 <b>${ratio}</b></span><span>오후 <b>${pmTrip}회${pmBus}번</b>~</span>`;
+    // 인쇄 시 보이지 않게 할 요소에 print-hide 클래스 적용, 운행대수는 print-enlarge
+    document.getElementById('infobar').innerHTML=`<span class="print-enlarge">운행대수: <b>${busCount}</b>대</span><span class="print-hide">비율 <b>${ratio}</b></span><span class="print-hide">오후 <b>${pmTrip}회${pmBus}번</b>~</span>`;
     const c=document.getElementById('content');
     if(currentView==='integrated') renderIntegrated(c);
     else if(currentView==='split') renderSplit(c);
@@ -262,7 +271,8 @@ function thead(trips){
 }
 
 function renderIntegrated(el){
-    let h=`<div style="padding:8px"><table>${thead([1,2,3,4,5,6])}<tbody>`;
+    // 인쇄 시 A4 채우기 위한 래퍼 추가
+    let h=`<div class="print-full-page" style="padding:8px"><table>${thead([1,2,3,4,5,6])}<tbody>`;
     for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3,4,5,6].map(t=>gs(b,t)));
     el.innerHTML=h+'</tbody></table></div>';
 }
@@ -280,7 +290,7 @@ function renderSplit(el){
 }
 
 function renderInput(el){
-    let h='<div style="padding:8px"><table class="input-table"><thead><tr><th style="width:24px">번</th>';
+    let h='<div class="print-full-page" style="padding:8px"><table class="input-table"><thead><tr><th style="width:24px">번</th>';
     for(let t=1;t<=6;t++) h+=`<th>${t}출발</th><th style="width:36px">운행</th>`;
     h+='</tr></thead><tbody>';
     for(let b=1;b<=busCount;b++){
@@ -322,7 +332,7 @@ function applySettings(){
 function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
-/* === [절대 잘림 방지] 고해상도 + 셀 단위 강제 압축 스케일링 === */
+/* === 캡처 기능 세밀 조정 (운행시간 유무에 따른 비율 최적화) === */
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -330,14 +340,14 @@ async function captureAndShare(target) {
     loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">고화질 이미지 렌더링 중...</div>';
     document.body.appendChild(loading);
 
-    // 캡처용 도화지는 정사이즈 A4 고정
     const exportDiv = document.createElement('div');
     exportDiv.style.width = '794px';
     exportDiv.style.height = '1123px'; 
+    exportDiv.style.overflow = 'hidden'; 
     exportDiv.style.backgroundColor = '#ffffff';
     exportDiv.style.padding = '40px 30px';
     exportDiv.style.boxSizing = 'border-box';
-    exportDiv.style.position = 'fixed';
+    exportDiv.style.position = 'absolute';
     exportDiv.style.left = '-9999px';
     exportDiv.style.top = '0';
     exportDiv.style.color = '#000';
@@ -351,35 +361,32 @@ async function captureAndShare(target) {
     if (target === 'integrated') titleSuffix = ' (통합)';
     const exportTitle = `${displayTitle} 시간표${titleSuffix}`;
 
-    let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:16px; font-weight:bold; color:#475569; line-height:1;">운행대수: ${busCount}대</div>`;
+    let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:36px; color:#1e3a8a; font-weight:900;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:16px; font-weight:bold; color:#475569;">운행대수: ${busCount}대</div>`;
 
-    // 운행시간 유무 검사
     let hasAnyTT = false;
     for(let key in tts) {
         if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; }
     }
 
-    // A4 가용 높이를 수학적으로 쪼개어 절대 삐져나갈 수 없게 제한 (핵심 해결!)
     const maxTableHeight = 940; 
     const totalRows = hasAnyTT ? busCount * 3 : busCount; 
-    const exactCellHeight = maxTableHeight / (totalRows + 1); // 헤더 포함하여 쪼갬
+    const exactCellHeight = maxTableHeight / (totalRows + 1); 
     
-    // 높이에 비례하여 모든 글자 크기를 극단적으로 욱여넣음
-    const fsSeq = Math.max(9, Math.floor(exactCellHeight * 0.65)); 
-    const fsTime = Math.max(9, Math.floor(exactCellHeight * 0.75)); 
-    const fsSub = Math.max(7, Math.floor(exactCellHeight * 0.45)); 
-    const fsDepOnly = Math.max(14, Math.floor(exactCellHeight * 0.75)); 
+    // 운행시간이 있을 때 보조시간 크기 키움 (0.45 -> 0.55), 없을 때 너무 큰 글씨 살짝 줄임
+    const fsSeq = hasAnyTT ? Math.max(9, Math.floor(exactCellHeight * 0.65)) : Math.max(10, Math.floor(exactCellHeight * 0.60)); 
+    const fsTime = Math.max(10, Math.floor(exactCellHeight * 0.75)); 
+    const fsSub = Math.max(8.5, Math.floor(exactCellHeight * 0.55)); 
+    const fsDepOnly = Math.max(14, Math.floor(exactCellHeight * 0.65)); 
 
     let tableHTML = `<style>
-        .table-wrapper { flex: 1; width: 100%; }
-        table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; box-sizing:border-box; }
-        th { background:#e2e8f0; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(10, Math.floor(exactCellHeight * 0.5))}px; font-weight:800; color:#1e293b; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; }
+        .table-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; }
+        th { background:#e2e8f0; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(11, Math.min(16, exactCellHeight * 0.5))}px; font-weight:800; color:#1e293b; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; }
         td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; }
         
         td.seq { font-weight:900; background:#f8fafc; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; }
         
-        /* 출발, 도착시각 색깔 및 크기 완벽 통일 */
         td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; }
         td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; }
         
@@ -439,22 +446,14 @@ async function captureAndShare(target) {
         const canvas = await html2canvas(exportDiv, { scale: 2, useCORS: true, windowWidth: 800, windowHeight: 1150 });
         canvas.toBlob(async (blob) => {
             const file = new File([blob], `${exportTitle}.png`, { type: 'image/png' });
-            
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({ files: [file], title: exportTitle, text: '배차 시간표를 공유합니다.' });
-                } catch (err) {
-                    console.log('공유 취소 또는 실패', err);
-                    downloadBlob(blob, `${exportTitle}.png`);
-                }
-            } else {
-                downloadBlob(blob, `${exportTitle}.png`);
-            }
+                try { await navigator.share({ files: [file], title: exportTitle, text: '배차 시간표를 공유합니다.' }); }
+                catch (err) { downloadBlob(blob, `${exportTitle}.png`); }
+            } else { downloadBlob(blob, `${exportTitle}.png`); }
             document.body.removeChild(exportDiv);
             document.body.removeChild(loading);
         }, 'image/png');
     } catch (e) {
-        console.error(e);
         alert("이미지 생성 중 오류가 발생했습니다.");
         document.body.removeChild(exportDiv);
         document.body.removeChild(loading);

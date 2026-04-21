@@ -45,15 +45,7 @@
               alert('현재 브라우저에서는 공유 기능을 지원하지 않습니다. URL을 복사해주세요.');
           }
       }
-
-      // [핵심] 팝업 없이 곧바로 뒤로가기 종료
-      window.history.pushState(null, null, window.location.href);
-      window.onpopstate = function () {
-          window.open('','_self').close(); 
-          setTimeout(function() {
-              window.location.replace("about:blank"); // 강제 빈 화면 전환
-          }, 10);
-      };
+      // 백지 화면이 뜨지 않도록 억지 종료 로직을 싹 지웠습니다. 스마트폰 뒤로 가기가 자연스럽게 작동합니다.
   </script>
 </body>
 </html>
