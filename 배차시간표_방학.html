@@ -56,9 +56,28 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .split-header.pm .title { color: #991b1b; }
 .split-header .info { font-size: 14px; font-weight: bold; color: #475569; }
 
+/* === [핵심] 인쇄(PDF)를 사진 전송과 완벽하게 동일하게 만드는 마법의 CSS === */
+#print-container { display: none; }
 @media print {
-    /* 기존 화면의 인쇄를 완전히 막아버립니다. (JS로 만든 완벽한 도화지만 인쇄됨) */
-    body { display: none !important; }
+    html, body { height: 100% !important; background: #fff !important; margin: 0 !important; padding: 0 !important; }
+    @page { size: A4 portrait; margin: 0; }
+    
+    /* 기본 화면은 전부 숨기고, 우리가 새로 만든 정밀 프린트 컨테이너만 보여줍니다. */
+    body.custom-printing > :not(#print-container) { display: none !important; }
+    body.custom-printing #print-container { display: block !important; width: 100%; background: #fff; }
+    
+    .custom-print-page {
+        width: 794px; /* A4 픽셀 고정 */
+        height: 1123px; /* A4 픽셀 고정 */
+        padding: 40px 30px;
+        box-sizing: border-box;
+        page-break-after: always;
+        break-after: page;
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+        margin: 0 auto;
+    }
 }
 </style>
 </head>
@@ -71,8 +90,7 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
     <button class="tab" onclick="switchView('split')">분리</button>
     <button class="tab" onclick="switchView('input')">입력</button>
     <button class="tab share-btn" onclick="openShareModal()">📷 전송</button>
-    <button class="tab print-btn" onclick="triggerPrint()">🖨️</button>
-    <button class="tab" onclick="openSettings()">⚙️</button>
+    <button class="tab print-btn" onclick="triggerPrint()">🖨️</button> <button class="tab" onclick="openSettings()">⚙️</button>
   </div>
 </div>
 
@@ -86,6 +104,7 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 
 <div class="infobar" id="infobar"></div>
 <div class="content" id="content"></div>
+<div id="print-container"></div>
 
 <div class="modal-bg hidden" id="modal-bg" onclick="closeSettings()">
   <div class="modal" onclick="event.stopPropagation()">
@@ -113,13 +132,16 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 <script>
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(console.error); }
 
-// 백지 화면이 뜨게 만들던 history.pushState 억지 코드를 싹 다 지웠습니다. (자연스러운 뒤로가기 적용)
+window.history.pushState(null, null, window.location.href);
+window.onpopstate = function () {
+    window.open('','_self').close();
+    setTimeout(function() { window.location.replace("about:blank"); }, 10);
+};
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
-// [데이터 복구 완료] v2를 빼고 예전 오리지널 이름으로 완벽히 되돌렸습니다. 기존 데이터가 무조건 살아납니다!
-const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
-
+const STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
 let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
+
 const busNum = localStorage.getItem('busNumber') || '101';
 document.getElementById('appTitle').innerText = `${busNum}번 ${displayTitle}`;
 
@@ -275,7 +297,7 @@ function renderSplit(el){
     const splitD=(pmTrip-1)*busCount+pmBus;
     let h='<div class="split-grid"><div class="split-item"><div class="section-title section-am">오전</div><table>'+thead([1,2,3])+'<tbody>';
     for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
-    h+='</tbody></table></div><div class="split-item"><div class="section-title section-pm">오후 (${pmTrip}회${pmBus}번~)</div><table>'+thead([1,2,3])+'<tbody>';
+    h+='</tbody></table></div><div class="split-item"><div class="section-title section-pm">오후 ('+pmTrip+'회'+pmBus+'번~)</div><table>'+thead([1,2,3])+'<tbody>';
     for(let p=0;p<busCount;p++){
         const b=((pmBus-1+p)%busCount)+1;
         h+=busRows(b,[1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
@@ -327,42 +349,43 @@ function openShareModal() { document.getElementById('share-modal-bg').classList.
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
 /* ========================================================================= */
-/* [핵심 모듈] 인쇄와 캡처 화면을 똑같이 그려주는 HTML 생성 함수 */
+/* [핵심 마법] 사진 전송과 인쇄(PDF)가 100% 동일하게 렌더링 되도록 해주는 공통 함수 */
 /* ========================================================================= */
 function getScheduleHTML(target) {
-    const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
-    let leftText = target === 'integrated' ? '통합' : (target === 'am' ? '오전' : '오후');
+    let titleSuffix = '';
+    if (target === 'am') titleSuffix = ' (오전)';
+    if (target === 'pm') titleSuffix = ' (오후)';
+    if (target === 'integrated') titleSuffix = ' (통합)';
+    const exportTitle = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
 
-    let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
-    contentHTML += `<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px; border-bottom:2px solid #1e3a8a; padding-bottom:5px;">`;
-    contentHTML += `<div style="font-size:24px; font-weight:900; color:#1e3a8a;">${leftText}</div>`;
-    contentHTML += `<div style="font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
-    contentHTML += `</div>`;
+    let contentHTML = `<h2 style="text-align:center; margin:0 0 15px 0; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
 
     let hasAnyTT = false;
     for(let key in tts) {
         if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; }
     }
 
+    const maxTableHeight = 930; 
     const totalRows = hasAnyTT ? busCount * 3 : busCount; 
-    const scale = Math.min(1, 48 / totalRows); 
+    const exactCellHeight = maxTableHeight / (totalRows + 1); 
     
-    const fsSeq = Math.max(10, Math.floor(22 * scale)); 
-    const fsTime = Math.max(11, Math.floor(26 * scale)); 
-    const fsSub = Math.max(9, Math.floor(14 * scale)); 
-    const fsDepOnly = Math.max(14, Math.floor(32 * scale)); 
+    const fsSeq = hasAnyTT ? Math.max(9, Math.floor(exactCellHeight * 0.65)) : Math.max(10, Math.floor(exactCellHeight * 0.50)); 
+    const fsTime = hasAnyTT ? Math.max(10, Math.floor(exactCellHeight * 0.75)) : Math.max(10, Math.floor(exactCellHeight * 0.60)); 
+    const fsSub = Math.max(11, Math.floor(exactCellHeight * 0.60)); 
+    const fsDepOnly = Math.max(14, Math.floor(exactCellHeight * 0.60)); 
 
     let tableHTML = `<style>
-        .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; min-height: 0; }
-        .export-wrapper table { flex: 1; border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border: 2px solid #94a3b8; }
-        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(11, Math.floor(16 * scale))}px; font-weight:800; color:#1e293b; padding:2px !important; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding: 2px; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; }
-        .export-wrapper td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; }
-        .export-wrapper td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; }
-        .export-wrapper td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; }
-        .export-wrapper td.dep-s { color:#dc2626; }
-        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; }
+        .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; }
+        .export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; box-sizing:border-box; }
+        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(12, Math.floor(exactCellHeight * 0.5))}px; font-weight:800; color:#1e293b; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper td.dep-s { color:#dc2626; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; -webkit-print-color-adjust:exact; color-adjust:exact; }
         .export-wrapper td.tt { border-right:1px dashed #e2e8f0; }
     </style><div class="export-wrapper">`;
 
@@ -411,7 +434,7 @@ function getScheduleHTML(target) {
     return contentHTML + tableHTML;
 }
 
-// [캡처 전송]
+// [사진 전송 실행] 위 공통 함수를 사용하여 이미지 생성
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -444,13 +467,13 @@ async function captureAndShare(target) {
             if (target === 'am') titleSuffix = ' (오전)';
             if (target === 'pm') titleSuffix = ' (오후)';
             if (target === 'integrated') titleSuffix = ' (통합)';
-            const exportFileName = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
+            const exportTitle = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
             
-            const file = new File([blob], `${exportFileName}.png`, { type: 'image/png' });
+            const file = new File([blob], `${exportTitle}.png`, { type: 'image/png' });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try { await navigator.share({ files: [file], title: exportFileName, text: '배차 시간표를 공유합니다.' }); } 
-                catch (err) { downloadBlob(blob, `${exportFileName}.png`); }
-            } else { downloadBlob(blob, `${exportFileName}.png`); }
+                try { await navigator.share({ files: [file], title: exportTitle, text: '배차 시간표를 공유합니다.' }); } 
+                catch (err) { downloadBlob(blob, `${exportTitle}.png`); }
+            } else { downloadBlob(blob, `${exportTitle}.png`); }
             document.body.removeChild(exportDiv);
             document.body.removeChild(loading);
         }, 'image/png');
@@ -473,53 +496,47 @@ function downloadBlob(blob, filename) {
     document.body.removeChild(a);
 }
 
-// [PDF 인쇄] 사진 생성과 100% 똑같은 코드를 숨겨진 iframe에서 인쇄합니다. (브라우저 오류 완벽 차단)
+// [인쇄(PDF) 실행] 위 공통 함수를 사용하여 브라우저 인쇄 화면 강제 호출
 function triggerPrint() {
-    if (currentView === 'input') { window.print(); return; }
-    
-    let printHTML = '';
-    if (currentView === 'integrated') {
-        printHTML = `<div class="print-page">${getScheduleHTML('integrated')}</div>`;
-    } else {
-        // 오전과 오후를 각각 꽉 찬 페이지로 강제 생성
-        printHTML = `<div class="print-page">${getScheduleHTML('am')}</div><div class="print-page">${getScheduleHTML('pm')}</div>`;
+    if (currentView === 'input') {
+        document.body.classList.remove('custom-printing');
+        window.print();
+        return;
     }
     
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
+    document.body.classList.add('custom-printing');
     
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    // iframe 안에 캡처용 디자인을 100% 동일하게 그리는 HTML을 주입
-    doc.write(`
-        <html>
-        <head>
-            <title>${busNum}번 배차시간표(${displayTitle})</title>
-            <style>
-                @page { size: A4 portrait; margin: 10mm; }
-                body { margin: 0; padding: 0; background: #fff; font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; -webkit-print-color-adjust:exact; color-adjust:exact; }
-                /* 페이지별로 A4 비율에 꽉 차게 높이를 277mm로 고정하고 강제로 분할합니다 */
-                .print-page { width: 100%; height: 277mm; page-break-after: always; display: flex; flex-direction: column; box-sizing: border-box; }
-                .print-page:last-child { page-break-after: auto; }
-            </style>
-        </head>
-        <body>${printHTML}</body>
-        </html>
-    `);
-    doc.close();
+    let printContainer = document.getElementById('print-container');
+    if (!printContainer) {
+        printContainer = document.createElement('div');
+        printContainer.id = 'print-container';
+        document.body.appendChild(printContainer);
+    }
+    printContainer.innerHTML = '';
     
-    setTimeout(() => {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        setTimeout(() => { document.body.removeChild(iframe); }, 1000);
-    }, 500);
+    if (currentView === 'integrated') {
+        const page = document.createElement('div');
+        page.className = 'custom-print-page';
+        page.innerHTML = getScheduleHTML('integrated');
+        printContainer.appendChild(page);
+    } else if (currentView === 'split') {
+        const page1 = document.createElement('div');
+        page1.className = 'custom-print-page';
+        page1.innerHTML = getScheduleHTML('am');
+        printContainer.appendChild(page1);
+        
+        const page2 = document.createElement('div');
+        page2.className = 'custom-print-page';
+        page2.innerHTML = getScheduleHTML('pm');
+        printContainer.appendChild(page2);
+    }
+    
+    setTimeout(() => { window.print(); }, 100);
 }
+
+window.onafterprint = function() {
+    document.body.classList.remove('custom-printing');
+};
 
 loadData(); schedule=compute(); render();
 </script>
