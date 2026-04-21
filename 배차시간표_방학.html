@@ -244,10 +244,12 @@ function render(){
     else renderInput(c);
 }
 
+// [중요 변경] 렌더링 시 출발시간에 'dep' 클래스를 명시적으로 추가했습니다.
 function busRows(bus,slots){
     let r1=`<td rowspan="3" class="seq">${bus}</td>`, r2='', r3='';
     slots.forEach((s,i)=>{
-        const isS=s&&s.fd==='S'; r1+=`<td colspan="2" class="${isS?'dep-s':''}">${s?fmt(s.fd):''}</td>`;
+        const isS=s&&s.fd==='S'; 
+        r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}">${s?fmt(s.fd):''}</td>`;
         if(i<slots.length-1){ const ns=slots[i+1]; r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}">${ns&&ns.dr!=null?ns.dr:''}</td>`; }
         r2+=`<td class="tt">${s&&s.tt||''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
         r3+=`<td colspan="2" class="bus-sep arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
@@ -320,7 +322,7 @@ function applySettings(){
 function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
-/* A4 비율 이미지 생성 및 공유/저장 기능 (글자 큼직하게, 회차지비율 삭제) */
+/* [핵심 변경] 완벽한 A4 픽셀 비율 적용 및 가독성 최적화 스타일링 */
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -329,18 +331,20 @@ async function captureAndShare(target) {
     loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">이미지 렌더링 중...</div>';
     document.body.appendChild(loading);
 
-    // A4 용지 비율 컨테이너 생성 (가로 800px, 세로 최소 1131px)
+    // 완벽한 A4 비율 (794 x 1123 픽셀) 및 flex 적용으로 테이블 높이 채우기
     const exportDiv = document.createElement('div');
-    exportDiv.style.width = '800px';
-    exportDiv.style.minHeight = '1131px'; 
+    exportDiv.style.width = '794px';
+    exportDiv.style.height = '1123px'; 
     exportDiv.style.backgroundColor = '#ffffff';
-    exportDiv.style.padding = '40px';
+    exportDiv.style.padding = '40px 30px';
     exportDiv.style.boxSizing = 'border-box';
     exportDiv.style.position = 'absolute';
     exportDiv.style.left = '-9999px';
     exportDiv.style.top = '0';
     exportDiv.style.color = '#000';
     exportDiv.style.fontFamily = "'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
+    exportDiv.style.display = 'flex';
+    exportDiv.style.flexDirection = 'column';
 
     let titleSuffix = '';
     if (target === 'am') titleSuffix = ' (오전)';
@@ -348,24 +352,34 @@ async function captureAndShare(target) {
     if (target === 'integrated') titleSuffix = ' (통합)';
     const exportTitle = `${displayTitle} 시간표${titleSuffix}`;
 
-    // 상단 텍스트 구조 변경 (회차지비율 제외, 운행대수 강조, 제목 크기 확대)
-    let contentHTML = `<h2 style="text-align:center; margin-bottom:15px; font-size:36px; color:#1d4ed8; font-weight:900;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:20px; font-size:18px; font-weight:bold; color:#4b5563;">운행대수: ${busCount}대</div>`;
+    // 상단 타이틀부
+    let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:36px; color:#1e3a8a; font-weight:900;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:16px; font-weight:bold; color:#475569;">운행대수: ${busCount}대</div>`;
 
-    // 캡처용 표 스타일 (글자 크기와 여백 대폭 증가)
+    // 캡처 전용 스타일 (크기 대비 극대화 및 깔끔한 테두리)
     let tableHTML = `<style>
-        table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; font-size:18px; }
-        th { background:#dbeafe; border:1px solid #9ca3af; padding:14px 4px; text-align:center; font-size:18px; }
-        td { border:1px solid #d1d5db; text-align:center; padding:12px 2px; }
-        td.seq { font-weight:bold; background:#f8fafc; font-size:22px; }
-        td.dep-s { color:#dc2626; font-weight:bold; }
-        td.rest-bad { background:#fee2e2; color:#b91c1c; }
-        .tt, .hj, .arr { font-size:16px; color:#374151; }
-    </style>`;
+        .table-wrapper { flex: 1; display: flex; flex-direction: column; }
+        table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; font-size:16px; }
+        th { background:#e2e8f0; border:1px solid #94a3b8; padding:10px 4px; text-align:center; font-size:16px; font-weight:800; color:#1e293b; }
+        td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; }
+        
+        /* 세로줄 구분선을 굵게하여 시각적 안정감 부여 */
+        td.seq { font-weight:900; background:#f8fafc; font-size:22px; color:#0f172a; border-right:2px solid #94a3b8; }
+        td.rest { font-size:16px; font-weight:bold; color:#475569; background:#f8fafc; border-left:2px solid #94a3b8; border-right:2px solid #94a3b8; }
+        td.rest-bad { color:#dc2626; background:#fee2e2; }
+        
+        /* 핵심 정보: 출발, 도착 시각 폰트 대폭 확대 */
+        td.dep { font-size:22px; font-weight:900; color:#1d4ed8; padding-top:8px; padding-bottom:2px; border-bottom:none; }
+        td.dep-s { color:#dc2626; }
+        td.arr { font-size:20px; font-weight:bold; color:#334155; padding-top:2px; padding-bottom:8px; border-top:none; }
+        
+        /* 부가 정보: 운행시간, 회차시간 작고 연하게 처리 */
+        td.tt, td.hj { font-size:11px; color:#64748b; font-weight:normal; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; padding:2px; }
+        td.tt { border-right:1px dashed #e2e8f0; }
+    </style><div class="table-wrapper">`;
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
 
-    // 선택된 유형에 따라 테이블 그리기
     if (target === 'integrated') {
         tableHTML += `<table>${thead([1,2,3,4,5,6])}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += busRows(b, [1,2,3,4,5,6].map(t=>gs(b,t)));
@@ -382,17 +396,17 @@ async function captureAndShare(target) {
         }
         tableHTML += `</tbody></table>`;
     }
+    
+    tableHTML += `</div>`; // table-wrapper 닫기
 
     exportDiv.innerHTML = contentHTML + tableHTML;
     document.body.appendChild(exportDiv);
 
     try {
-        // html2canvas로 화면 렌더링 (고화질 옵션 scale: 2)
         const canvas = await html2canvas(exportDiv, { scale: 2, useCORS: true });
         canvas.toBlob(async (blob) => {
             const file = new File([blob], `${exportTitle}.png`, { type: 'image/png' });
             
-            // 모바일 기기 등 공유 기능 지원 여부 확인
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
                     await navigator.share({
@@ -419,7 +433,6 @@ async function captureAndShare(target) {
     }
 }
 
-// 브라우저 직접 다운로드 기능
 function downloadBlob(blob, filename) {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
