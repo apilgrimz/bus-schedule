@@ -40,7 +40,8 @@ td.seq { font-weight:bold; background:#f8fafc; width:28px }
 td.dep-s { color:#dc2626; font-weight:bold }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-td.tt, td.hj { font-size: 9px; letter-spacing: -0.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 1px; }
+/* [일반 화면 개선] 운행/회차시간 삐져나옴 완벽 차단 */
+td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 0; line-height: 1.1; }
 td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
@@ -50,10 +51,19 @@ td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
+/* [인쇄 최적화] 분리 시 오전/오후 페이지 넘김 완벽 보장 */
+@page { size: A4 portrait; margin: 10mm; }
 @media print {
-    html, body { height: auto !important; width: auto !important; max-width: none !important; display: block !important; overflow: visible !important; background: #fff !important; }
+    html, body { height: 100% !important; background: #fff !important; overflow: visible !important; }
     .topbar, .quick-nav, #modal-bg, #share-modal-bg { display: none !important; }
+    .content { overflow: visible !important; height: auto !important; padding: 0 !important; }
     th { position: static !important; }
+    /* 한 페이지 예쁜 비율 차지 (통합 모드용) */
+    table { height: 95vh !important; }
+    /* 분리 모드 강제 페이지 나눔 */
+    .split-grid { display: block !important; width: 100% !important; }
+    .split-item { margin-bottom: 20px !important; }
+    .page-break { page-break-before: always !important; break-before: page !important; }
 }
 </style>
 </head>
@@ -108,23 +118,13 @@ td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 <script>
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(console.error); }
 
-// [핵심 변경] 알림 없이 즉시 종료
+// [핵심] 귀찮은 알림 팝업 없이 즉시 브라우저 백/종료 처리
 window.history.pushState(null, null, window.location.href);
 window.onpopstate = function () {
     window.open('','_self').close();
     setTimeout(function() {
-        document.body.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center; padding: 20px;">
-                <h2 style="color:#2d3748; margin-bottom:15px; font-weight:900;">🚌 앱이 종료되었습니다</h2>
-                <p style="color:#4a5568; font-size:15px; line-height: 1.5; margin-bottom: 30px;">
-                    스마트폰의 <b>[홈 버튼]</b>을 눌러 바탕화면으로 나가주세요.
-                </p>
-            </div>
-        `;
-        document.addEventListener("visibilitychange", function() {
-            if (document.visibilityState === 'visible') window.location.replace("index.html");
-        });
-    }, 100);
+        window.location.replace("about:blank"); // 실패 시 무음 빈 화면 전환
+    }, 10);
 };
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
@@ -272,7 +272,10 @@ function renderSplit(el){
     let h='<div class="split-grid"><div class="split-item"><div class="section-title section-am">오전</div><table>'+thead([1,2,3])+'<tbody>';
     for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
     h+='</tbody></table></div><div class="split-item page-break"><div class="section-title section-pm">오후 ('+pmTrip+'회'+pmBus+'번~)</div><table>'+thead([1,2,3])+'<tbody>';
-    for(let p=0;p<busCount;p++){ const b=((pmBus-1+p)%busCount)+1; h+=busRows(b,[1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;})); }
+    for(let p=0;p<busCount;p++){
+        const b=((pmBus-1+p)%busCount)+1;
+        h+=busRows(b,[1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
+    }
     el.innerHTML=h+'</tbody></table></div></div>';
 }
 
@@ -319,7 +322,7 @@ function applySettings(){
 function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
-// 캡처 스케일링 자동 크기조절 유지
+/* === [절대 잘림 방지] 고해상도 + 셀 단위 강제 압축 스케일링 === */
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -327,14 +330,14 @@ async function captureAndShare(target) {
     loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">고화질 이미지 렌더링 중...</div>';
     document.body.appendChild(loading);
 
+    // 캡처용 도화지는 정사이즈 A4 고정
     const exportDiv = document.createElement('div');
     exportDiv.style.width = '794px';
     exportDiv.style.height = '1123px'; 
-    exportDiv.style.overflow = 'hidden'; 
     exportDiv.style.backgroundColor = '#ffffff';
     exportDiv.style.padding = '40px 30px';
     exportDiv.style.boxSizing = 'border-box';
-    exportDiv.style.position = 'absolute';
+    exportDiv.style.position = 'fixed';
     exportDiv.style.left = '-9999px';
     exportDiv.style.top = '0';
     exportDiv.style.color = '#000';
@@ -348,34 +351,41 @@ async function captureAndShare(target) {
     if (target === 'integrated') titleSuffix = ' (통합)';
     const exportTitle = `${displayTitle} 시간표${titleSuffix}`;
 
-    let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:36px; color:#1e3a8a; font-weight:900;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:16px; font-weight:bold; color:#475569;">운행대수: ${busCount}대</div>`;
+    let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:16px; font-weight:bold; color:#475569; line-height:1;">운행대수: ${busCount}대</div>`;
 
+    // 운행시간 유무 검사
     let hasAnyTT = false;
     for(let key in tts) {
         if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; }
     }
 
-    const maxTableHeight = 930; 
+    // A4 가용 높이를 수학적으로 쪼개어 절대 삐져나갈 수 없게 제한 (핵심 해결!)
+    const maxTableHeight = 940; 
     const totalRows = hasAnyTT ? busCount * 3 : busCount; 
-    const cellHeight = maxTableHeight / totalRows; 
+    const exactCellHeight = maxTableHeight / (totalRows + 1); // 헤더 포함하여 쪼갬
     
-    const fsSeq = Math.max(10, Math.min(24, cellHeight * 0.7)); 
-    const fsTime = Math.max(10, Math.min(24, cellHeight * 0.7)); 
-    const fsSub = Math.max(8, Math.min(13, cellHeight * 0.5)); 
-    const fsDepOnly = Math.max(14, Math.min(36, cellHeight * 0.7)); 
-    const padY = Math.max(1, Math.floor(cellHeight * 0.15));
+    // 높이에 비례하여 모든 글자 크기를 극단적으로 욱여넣음
+    const fsSeq = Math.max(9, Math.floor(exactCellHeight * 0.65)); 
+    const fsTime = Math.max(9, Math.floor(exactCellHeight * 0.75)); 
+    const fsSub = Math.max(7, Math.floor(exactCellHeight * 0.45)); 
+    const fsDepOnly = Math.max(14, Math.floor(exactCellHeight * 0.75)); 
 
     let tableHTML = `<style>
-        .table-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; min-height: 0; }
-        table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; }
-        th { background:#e2e8f0; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(11, Math.min(16, cellHeight * 0.5))}px; font-weight:800; color:#1e293b; padding: ${padY}px; }
-        td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding: ${padY}px 1px; }
+        .table-wrapper { flex: 1; width: 100%; }
+        table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; box-sizing:border-box; }
+        th { background:#e2e8f0; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(10, Math.floor(exactCellHeight * 0.5))}px; font-weight:800; color:#1e293b; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; }
+        td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; }
+        
         td.seq { font-weight:900; background:#f8fafc; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; }
-        td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; padding-bottom:0; }
-        td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; padding-top:0; }
+        
+        /* 출발, 도착시각 색깔 및 크기 완벽 통일 */
+        td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; }
+        td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; }
+        
         td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; }
         td.dep-s { color:#dc2626; }
+        
         td.tt, td.hj { font-size:${fsSub}px; color:#64748b; font-weight:normal; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; }
         td.tt { border-right:1px dashed #e2e8f0; }
     </style><div class="table-wrapper">`;
@@ -426,7 +436,7 @@ async function captureAndShare(target) {
     document.body.appendChild(exportDiv);
 
     try {
-        const canvas = await html2canvas(exportDiv, { scale: 2, useCORS: true });
+        const canvas = await html2canvas(exportDiv, { scale: 2, useCORS: true, windowWidth: 800, windowHeight: 1150 });
         canvas.toBlob(async (blob) => {
             const file = new File([blob], `${exportTitle}.png`, { type: 'image/png' });
             
