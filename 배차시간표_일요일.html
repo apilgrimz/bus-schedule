@@ -21,7 +21,7 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .tab { padding:7px 10px; border-radius:8px; font-size:12px; font-weight:bold; border:none; cursor:pointer; background:#f0f0f0; color:#555; transition: 0.2s; }
 .tab.active { background:#2563eb; color:#fff }
 .tab.print-btn { background:#10b981; color:#fff; } 
-.tab.share-btn { background:#8b5cf6; color:#fff; } /* 캡처 전송 버튼 스타일 */
+.tab.share-btn { background:#8b5cf6; color:#fff; }
 
 .quick-nav { display: flex; background: #fff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; align-items: center; }
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
@@ -320,13 +320,13 @@ function applySettings(){
 function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
-/* A4 비율 이미지 생성 및 공유/저장 기능 */
+/* A4 비율 이미지 생성 및 공유/저장 기능 (글자 큼직하게, 회차지비율 삭제) */
 async function captureAndShare(target) {
     closeShareModal();
     
     // 로딩 표시
     const loading = document.createElement('div');
-    loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">이미지 생성 중...</div>';
+    loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">이미지 렌더링 중...</div>';
     document.body.appendChild(loading);
 
     // A4 용지 비율 컨테이너 생성 (가로 800px, 세로 최소 1131px)
@@ -348,18 +348,19 @@ async function captureAndShare(target) {
     if (target === 'integrated') titleSuffix = ' (통합)';
     const exportTitle = `${displayTitle} 시간표${titleSuffix}`;
 
-    let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:28px; color:#1d4ed8;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:20px; font-size:14px; color:#4b5563;">운행: ${busCount}대 / 회차지비율: ${ratio}</div>`;
+    // 상단 텍스트 구조 변경 (회차지비율 제외, 운행대수 강조, 제목 크기 확대)
+    let contentHTML = `<h2 style="text-align:center; margin-bottom:15px; font-size:36px; color:#1d4ed8; font-weight:900;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:right; margin-bottom:20px; font-size:18px; font-weight:bold; color:#4b5563;">운행대수: ${busCount}대</div>`;
 
-    // 캡처용 스타일 (화면의 CSS를 강제로 주입)
+    // 캡처용 표 스타일 (글자 크기와 여백 대폭 증가)
     let tableHTML = `<style>
-        table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; font-size:14px; }
-        th { background:#dbeafe; border:1px solid #9ca3af; padding:8px 2px; text-align:center; }
-        td { border:1px solid #d1d5db; text-align:center; padding:6px 1px; }
-        td.seq { font-weight:bold; background:#f8fafc; }
+        table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; font-size:18px; }
+        th { background:#dbeafe; border:1px solid #9ca3af; padding:14px 4px; text-align:center; font-size:18px; }
+        td { border:1px solid #d1d5db; text-align:center; padding:12px 2px; }
+        td.seq { font-weight:bold; background:#f8fafc; font-size:22px; }
         td.dep-s { color:#dc2626; font-weight:bold; }
         td.rest-bad { background:#fee2e2; color:#b91c1c; }
-        .tt, .hj, .arr { font-size:13px; }
+        .tt, .hj, .arr { font-size:16px; color:#374151; }
     </style>`;
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
@@ -401,11 +402,9 @@ async function captureAndShare(target) {
                     });
                 } catch (err) {
                     console.log('공유 취소 또는 실패', err);
-                    // 실패 시 다운로드로 유도
                     downloadBlob(blob, `${exportTitle}.png`);
                 }
             } else {
-                // PC 등 공유 미지원 환경에서는 바로 다운로드
                 downloadBlob(blob, `${exportTitle}.png`);
             }
             
