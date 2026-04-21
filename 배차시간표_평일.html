@@ -28,7 +28,6 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; }
 .nav-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 .nav-btn.home { background: #4a5568; color: #fff; border-color: #4a5568; }
-.nav-btn.exit { background: #e53e3e; color: #fff; border-color: #e53e3e; } 
 
 .infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
 .infobar b { font-weight:bold }
@@ -41,8 +40,7 @@ td.seq { font-weight:bold; background:#f8fafc; width:28px }
 td.dep-s { color:#dc2626; font-weight:bold }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-/* [일반 뷰 수정] 운행시간, 회차지 글자 넘침 방지 */
-td.tt, td.hj { font-size: 9px; letter-spacing: -0.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+td.tt, td.hj { font-size: 9px; letter-spacing: -0.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 1px; }
 td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
@@ -74,7 +72,6 @@ td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 </div>
 
 <div class="quick-nav">
-  <button onclick="exitApp()" class="nav-btn exit">🚪 나가기</button>
   <a href="index.html" class="nav-btn home">🏠 홈</a>
   <a href="배차시간표_평일.html" id="link-weekday" class="nav-btn">평일</a>
   <a href="배차시간표_토요일.html" id="link-saturday" class="nav-btn">토요일</a>
@@ -111,26 +108,24 @@ td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 <script>
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(console.error); }
 
-function exitApp() {
-    if (confirm("앱을 종료하시겠습니까?")) {
-        window.open('','_self').close();
-        setTimeout(function() {
-            document.body.innerHTML = `
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center; padding: 20px;">
-                    <h2 style="color:#2d3748; margin-bottom:15px; font-weight:900;">🚌 앱이 종료되었습니다</h2>
-                    <p style="color:#4a5568; font-size:15px; line-height: 1.5; margin-bottom: 30px;">
-                        스마트폰의 <b>[홈 버튼]</b>을 눌러 바탕화면으로 나가주세요.
-                    </p>
-                </div>
-            `;
-            document.addEventListener("visibilitychange", function() {
-                if (document.visibilityState === 'visible') window.location.replace("index.html");
-            });
-            window.history.pushState(null, null, window.location.href);
-            window.onpopstate = function () { window.location.replace("index.html"); };
-        }, 100);
-    }
-}
+// [핵심 변경] 알림 없이 즉시 종료
+window.history.pushState(null, null, window.location.href);
+window.onpopstate = function () {
+    window.open('','_self').close();
+    setTimeout(function() {
+        document.body.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center; padding: 20px;">
+                <h2 style="color:#2d3748; margin-bottom:15px; font-weight:900;">🚌 앱이 종료되었습니다</h2>
+                <p style="color:#4a5568; font-size:15px; line-height: 1.5; margin-bottom: 30px;">
+                    스마트폰의 <b>[홈 버튼]</b>을 눌러 바탕화면으로 나가주세요.
+                </p>
+            </div>
+        `;
+        document.addEventListener("visibilitychange", function() {
+            if (document.visibilityState === 'visible') window.location.replace("index.html");
+        });
+    }, 100);
+};
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
 const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
@@ -248,7 +243,6 @@ function render(){
     else renderInput(c);
 }
 
-// [일반 화면 유지용]
 function busRows(bus,slots){
     let r1=`<td rowspan="3" class="seq">${bus}</td>`, r2='', r3='';
     slots.forEach((s,i)=>{
@@ -325,8 +319,7 @@ function applySettings(){
 function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
-
-/* === [핵심 개선] 스마트 자동 크기 조절 및 레이아웃 === */
+// 캡처 스케일링 자동 크기조절 유지
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -358,41 +351,35 @@ async function captureAndShare(target) {
     let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:36px; color:#1e3a8a; font-weight:900;">${exportTitle}</h2>`;
     contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:16px; font-weight:bold; color:#475569;">운행대수: ${busCount}대</div>`;
 
-    // 1. 운행시간이 하나라도 입력되어 있는지 체크
     let hasAnyTT = false;
     for(let key in tts) {
-        if(tts[key] !== '' && tts[key] != null) { hasAnyTT = true; break; }
+        if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; }
     }
 
-    // 2. 입력 상태에 따른 극단적 자동 스케일링 계산
-    // 운행시간이 있으면 줄이 3배로 늘어나므로 스케일을 확 줄여야 절대 잘리지 않음
-    const rowFactor = hasAnyTT ? 2.6 : 1; 
-    const effectiveRows = busCount * rowFactor;
-    const scale = Math.min(1, 16 / effectiveRows);
-
-    // 3. 스케일에 따른 폰트 크기 동적 조절
-    const fsSeq = Math.max(10, Math.floor(20 * scale));
-    const fsTime = Math.max(10, Math.floor(18 * scale)); // [변경] 출발/도착 크기 동일하게
-    const fsSub = Math.max(7, Math.floor(11 * scale)); // 운행/회차지 크기 작게 조절
-    const fsDepOnly = Math.max(14, Math.floor(30 * scale)); 
-    const padY = Math.max(1, Math.floor(8 * scale));
+    const maxTableHeight = 930; 
+    const totalRows = hasAnyTT ? busCount * 3 : busCount; 
+    const cellHeight = maxTableHeight / totalRows; 
+    
+    const fsSeq = Math.max(10, Math.min(24, cellHeight * 0.7)); 
+    const fsTime = Math.max(10, Math.min(24, cellHeight * 0.7)); 
+    const fsSub = Math.max(8, Math.min(13, cellHeight * 0.5)); 
+    const fsDepOnly = Math.max(14, Math.min(36, cellHeight * 0.7)); 
+    const padY = Math.max(1, Math.floor(cellHeight * 0.15));
 
     let tableHTML = `<style>
         .table-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; min-height: 0; }
         table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; }
-        th { background:#e2e8f0; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(11, Math.floor(15*scale))}px; font-weight:800; color:#1e293b; padding: ${padY}px; }
+        th { background:#e2e8f0; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(11, Math.min(16, cellHeight * 0.5))}px; font-weight:800; color:#1e293b; padding: ${padY}px; }
         td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding: ${padY}px 1px; }
-        
         td.seq { font-weight:900; background:#f8fafc; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; }
         td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; padding-bottom:0; }
+        td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; padding-top:0; }
         td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; }
         td.dep-s { color:#dc2626; }
-        td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; padding-top:0; }
         td.tt, td.hj { font-size:${fsSub}px; color:#64748b; font-weight:normal; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; }
         td.tt { border-right:1px dashed #e2e8f0; }
     </style><div class="table-wrapper">`;
 
-    // 휴식(rest) 열을 완전히 삭제하고, 출발/도착의 구조만 남기는 렌더링 함수
     function getExportThead(trips) {
         let h = `<tr><th style="width:40px">순번</th>`;
         trips.forEach(t => { h += `<th colspan="2">${t}회</th>`; });
@@ -400,24 +387,19 @@ async function captureAndShare(target) {
     }
 
     function getExportBusRows(bus, slots) {
-        const hasTT = slots.some(s => s && s.tt != null && s.tt !== '');
-        let r1 = `<td rowspan="${hasTT ? 3 : 1}" class="seq">${bus}</td>`, r2 = '', r3 = '';
-        
+        let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="seq">${bus}</td>`, r2 = '', r3 = '';
         slots.forEach(s => {
             const isS = s && s.fd === 'S';
             const dep = s ? fmt(s.fd) : '';
-            if (hasTT) {
-                // 운행시간이 존재하면 3줄 (출발/운행/도착 동일색상 파란색)
+            if (hasAnyTT) {
                 r1 += `<td colspan="2" class="dep ${isS?'dep-s':''}">${dep}</td>`;
                 r2 += `<td class="tt">${s&&s.tt?s.tt:''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
                 r3 += `<td colspan="2" class="arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
             } else {
-                // 운행시간이 하나도 없으면 특대형 1줄
                 r1 += `<td colspan="2" class="dep-only ${isS?'dep-s':''}">${dep}</td>`;
             }
         });
-        
-        return hasTT ? `<tr>${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr>${r1}</tr>`;
+        return hasAnyTT ? `<tr>${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr>${r1}</tr>`;
     }
 
     const splitD = (pmTrip - 1) * busCount + pmBus;

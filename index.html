@@ -15,7 +15,6 @@
     .btn-red { background: #e53e3e !important; }
     .btn-green { background: #38a169 !important; }
     .btn-purple { background: #805ad5 !important; }
-    .btn-gray { background: #718096 !important; margin-top: 25px; } 
     .btn-outline { background: white !important; color: #2b6cb0; border: 2px solid #2b6cb0; margin-bottom: 25px; }
 </style>
 </head>
@@ -30,8 +29,6 @@
     <a href="배차시간표_토요일.html" class="btn btn-green">토요일 배차시간표</a>
     <a href="배차시간표_일요일.html" class="btn btn-red">일요일 배차시간표</a>
     <a href="배차시간표_방학.html" class="btn btn-purple">방학 배차시간표</a>
-
-    <button onclick="exitApp()" class="btn btn-gray">🚪 앱 나가기</button>
   </div>
 
   <script>
@@ -50,26 +47,24 @@
           }
       }
 
-      function exitApp() {
-          if (confirm("앱을 종료하시겠습니까?")) {
-              window.open('','_self').close(); 
-              setTimeout(function() {
-                  document.body.innerHTML = `
-                      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center; padding: 20px;">
-                          <h2 style="color:#2d3748; margin-bottom:15px; font-weight:900;">🚌 앱이 종료되었습니다</h2>
-                          <p style="color:#4a5568; font-size:15px; line-height: 1.5; margin-bottom: 30px;">
-                              스마트폰의 <b>[홈 버튼]</b>을 눌러 바탕화면으로 나가주세요.
-                          </p>
-                      </div>
-                  `;
-                  document.addEventListener("visibilitychange", function() {
-                      if (document.visibilityState === 'visible') window.location.replace("index.html");
-                  });
-                  window.history.pushState(null, null, window.location.href);
-                  window.onpopstate = function () { window.location.replace("index.html"); };
-              }, 100);
-          }
-      }
+      // [핵심 변경] 묻지 않고 즉시 종료 처리
+      window.history.pushState(null, null, window.location.href);
+      window.onpopstate = function () {
+          window.open('','_self').close(); 
+          setTimeout(function() {
+              document.body.innerHTML = `
+                  <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#e2e8f0; font-family:'Malgun Gothic',sans-serif; text-align:center; padding: 20px;">
+                      <h2 style="color:#2d3748; margin-bottom:15px; font-weight:900;">🚌 앱이 종료되었습니다</h2>
+                      <p style="color:#4a5568; font-size:15px; line-height: 1.5; margin-bottom: 30px;">
+                          스마트폰의 <b>[홈 버튼]</b>을 눌러 바탕화면으로 나가주세요.
+                      </p>
+                  </div>
+              `;
+              document.addEventListener("visibilitychange", function() {
+                  if (document.visibilityState === 'visible') window.location.replace("index.html");
+              });
+          }, 100);
+      };
   </script>
 </body>
 </html>
