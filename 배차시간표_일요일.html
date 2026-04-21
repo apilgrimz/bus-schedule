@@ -236,6 +236,7 @@ function compute(){
 let schedule;
 const gs=(b,t)=>schedule.find(s=>s.bus===b&&s.trip===t);
 
+// 화면 표시용 렌더링 함수들 (이곳은 휴식 칸이 유지됩니다)
 function render(){
     document.getElementById('infobar').innerHTML=`<span><b>${busCount}</b>대</span><span>비율 <b>${ratio}</b></span><span>오후 <b>${pmTrip}회${pmBus}번</b>~</span>`;
     const c=document.getElementById('content');
@@ -244,7 +245,6 @@ function render(){
     else renderInput(c);
 }
 
-// [중요 변경] 렌더링 시 출발시간에 'dep' 클래스를 명시적으로 추가했습니다.
 function busRows(bus,slots){
     let r1=`<td rowspan="3" class="seq">${bus}</td>`, r2='', r3='';
     slots.forEach((s,i)=>{
@@ -318,23 +318,24 @@ function applySettings(){
     closeSettings(); saveData(); schedule=compute(); render();
 }
 
-/* 공유 기능 모달 제어 */
 function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
-/* [핵심 변경] 완벽한 A4 픽셀 비율 적용 및 가독성 최적화 스타일링 */
+
+/* === 스마트 캡처 전용 로직 시작 (잘림 방지 + 휴식칸 삭제 + 자동 크기조절) === */
 async function captureAndShare(target) {
     closeShareModal();
     
-    // 로딩 표시
+    // 1. 로딩 UI
     const loading = document.createElement('div');
     loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">이미지 렌더링 중...</div>';
     document.body.appendChild(loading);
 
-    // 완벽한 A4 비율 (794 x 1123 픽셀) 및 flex 적용으로 테이블 높이 채우기
+    // 2. 완벽한 A4 비율 캔버스 생성 (넘치는 경우를 대비해 overflow: hidden 적용)
     const exportDiv = document.createElement('div');
     exportDiv.style.width = '794px';
     exportDiv.style.height = '1123px'; 
+    exportDiv.style.overflow = 'hidden'; 
     exportDiv.style.backgroundColor = '#ffffff';
     exportDiv.style.padding = '40px 30px';
     exportDiv.style.boxSizing = 'border-box';
@@ -352,56 +353,86 @@ async function captureAndShare(target) {
     if (target === 'integrated') titleSuffix = ' (통합)';
     const exportTitle = `${displayTitle} 시간표${titleSuffix}`;
 
-    // 상단 타이틀부
     let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:36px; color:#1e3a8a; font-weight:900;">${exportTitle}</h2>`;
     contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:16px; font-weight:bold; color:#475569;">운행대수: ${busCount}대</div>`;
 
-    // 캡처 전용 스타일 (크기 대비 극대화 및 깔끔한 테두리)
+    // 3. 순번 개수(busCount)에 따라 폰트와 여백을 자동 계산 (잘림 완벽 방지)
+    const scale = Math.min(1, 15 / busCount); 
+    const fsSeq = Math.max(12, Math.floor(22 * scale));
+    const fsDep = Math.max(12, Math.floor(22 * scale));
+    const fsArr = Math.max(10, Math.floor(18 * scale));
+    const fsSub = Math.max(8, Math.floor(11 * scale));
+    const fsDepOnly = Math.max(16, Math.floor(32 * scale)); // 운행시간 미입력 시 특대형 글자
+    const padY = Math.max(2, Math.floor(8 * scale));
+
     let tableHTML = `<style>
-        .table-wrapper { flex: 1; display: flex; flex-direction: column; }
-        table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; font-size:16px; }
-        th { background:#e2e8f0; border:1px solid #94a3b8; padding:10px 4px; text-align:center; font-size:16px; font-weight:800; color:#1e293b; }
-        td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; }
+        .table-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; }
+        th { background:#e2e8f0; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(12, Math.floor(16*scale))}px; font-weight:800; color:#1e293b; padding: ${padY}px; }
+        td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding: ${padY}px 2px; }
         
-        /* 세로줄 구분선을 굵게하여 시각적 안정감 부여 */
-        td.seq { font-weight:900; background:#f8fafc; font-size:22px; color:#0f172a; border-right:2px solid #94a3b8; }
-        td.rest { font-size:16px; font-weight:bold; color:#475569; background:#f8fafc; border-left:2px solid #94a3b8; border-right:2px solid #94a3b8; }
-        td.rest-bad { color:#dc2626; background:#fee2e2; }
-        
-        /* 핵심 정보: 출발, 도착 시각 폰트 대폭 확대 */
-        td.dep { font-size:22px; font-weight:900; color:#1d4ed8; padding-top:8px; padding-bottom:2px; border-bottom:none; }
+        td.seq { font-weight:900; background:#f8fafc; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; }
+        td.dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; border-bottom:none; padding-bottom:0; }
+        td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; }
         td.dep-s { color:#dc2626; }
-        td.arr { font-size:20px; font-weight:bold; color:#334155; padding-top:2px; padding-bottom:8px; border-top:none; }
-        
-        /* 부가 정보: 운행시간, 회차시간 작고 연하게 처리 */
-        td.tt, td.hj { font-size:11px; color:#64748b; font-weight:normal; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; padding:2px; }
+        td.arr { font-size:${fsArr}px; font-weight:bold; color:#334155; border-top:none; padding-top:0; }
+        td.tt, td.hj { font-size:${fsSub}px; color:#64748b; font-weight:normal; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; }
         td.tt { border-right:1px dashed #e2e8f0; }
     </style><div class="table-wrapper">`;
+
+    // 4. 캡처 전용 함수들 (휴식 칸 제거 로직 적용)
+    function getExportThead(trips) {
+        let h = `<tr><th style="width:40px">순번</th>`;
+        trips.forEach(t => { h += `<th colspan="2">${t}회</th>`; }); // 휴식 th 삭제
+        return `<thead>${h}</tr></thead>`;
+    }
+
+    function getExportBusRows(bus, slots) {
+        const hasTT = slots.some(s => s && s.tt != null && s.tt !== ''); // 운행시간 입력 여부 확인
+        let r1 = `<td rowspan="${hasTT ? 3 : 1}" class="seq">${bus}</td>`, r2 = '', r3 = '';
+        
+        slots.forEach(s => {
+            const isS = s && s.fd === 'S';
+            const dep = s ? fmt(s.fd) : '';
+            if (hasTT) {
+                // 운행시간이 있을 때: 3줄 렌더링
+                r1 += `<td colspan="2" class="dep ${isS?'dep-s':''}">${dep}</td>`;
+                r2 += `<td class="tt">${s&&s.tt?s.tt:''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
+                r3 += `<td colspan="2" class="arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
+            } else {
+                // 운행시간이 없을 때: 1줄로 통합하고 글자 크기 특대형(dep-only) 적용
+                r1 += `<td colspan="2" class="dep-only ${isS?'dep-s':''}">${dep}</td>`;
+            }
+            // 휴식 td 생성 코드는 완전히 삭제됨
+        });
+        
+        return hasTT ? `<tr>${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr>${r1}</tr>`;
+    }
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
 
     if (target === 'integrated') {
-        tableHTML += `<table>${thead([1,2,3,4,5,6])}<tbody>`;
-        for(let b=1; b<=busCount; b++) tableHTML += busRows(b, [1,2,3,4,5,6].map(t=>gs(b,t)));
+        tableHTML += `<table>${getExportThead([1,2,3,4,5,6])}<tbody>`;
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, [1,2,3,4,5,6].map(t=>gs(b,t)));
         tableHTML += `</tbody></table>`;
     } else if (target === 'am') {
-        tableHTML += `<table>${thead([1,2,3])}<tbody>`;
-        for(let b=1; b<=busCount; b++) tableHTML += busRows(b, [1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+        tableHTML += `<table>${getExportThead([1,2,3])}<tbody>`;
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, [1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
         tableHTML += `</tbody></table>`;
     } else if (target === 'pm') {
-        tableHTML += `<table>${thead([1,2,3])}<tbody>`;
+        tableHTML += `<table>${getExportThead([1,2,3])}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
-            tableHTML += busRows(b, [1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
+            tableHTML += getExportBusRows(b, [1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
         }
         tableHTML += `</tbody></table>`;
     }
     
-    tableHTML += `</div>`; // table-wrapper 닫기
-
+    tableHTML += `</div>`;
     exportDiv.innerHTML = contentHTML + tableHTML;
     document.body.appendChild(exportDiv);
 
+    // 5. 이미지 생성 및 내보내기
     try {
         const canvas = await html2canvas(exportDiv, { scale: 2, useCORS: true });
         canvas.toBlob(async (blob) => {
@@ -409,11 +440,7 @@ async function captureAndShare(target) {
             
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
-                    await navigator.share({
-                        files: [file],
-                        title: exportTitle,
-                        text: '배차 시간표를 공유합니다.'
-                    });
+                    await navigator.share({ files: [file], title: exportTitle, text: '배차 시간표를 공유합니다.' });
                 } catch (err) {
                     console.log('공유 취소 또는 실패', err);
                     downloadBlob(blob, `${exportTitle}.png`);
@@ -421,7 +448,6 @@ async function captureAndShare(target) {
             } else {
                 downloadBlob(blob, `${exportTitle}.png`);
             }
-            
             document.body.removeChild(exportDiv);
             document.body.removeChild(loading);
         }, 'image/png');
@@ -432,6 +458,8 @@ async function captureAndShare(target) {
         document.body.removeChild(loading);
     }
 }
+/* === 스마트 캡처 전용 로직 끝 === */
+
 
 function downloadBlob(blob, filename) {
     const url = window.URL.createObjectURL(blob);
