@@ -50,33 +50,32 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-.split-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #1e40af; }
-.split-header.pm { border-bottom-color: #991b1b; }
-.split-header .title { font-size: 16px; font-weight: 900; color: #1e40af; }
-.split-header.pm .title { color: #991b1b; }
-.split-header .info { font-size: 14px; font-weight: bold; color: #475569; }
-
-/* === [핵심] 인쇄(PDF)를 사진 전송과 완벽하게 동일하게 만드는 마법의 CSS === */
+/* === [마법의 인쇄(PDF) CSS] === */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; background: #fff !important; margin: 0 !important; padding: 0 !important; }
-    @page { size: A4 portrait; margin: 0; }
+    /* A4 세로, 기본 여백 지정 */
+    @page { size: A4 portrait; margin: 10mm; }
     
-    /* 기본 화면은 전부 숨기고, 우리가 새로 만든 정밀 프린트 컨테이너만 보여줍니다. */
+    /* 기본 화면은 모두 숨기고 인쇄용 컨테이너만 노출 */
     body.custom-printing > :not(#print-container) { display: none !important; }
     body.custom-printing #print-container { display: block !important; width: 100%; background: #fff; }
     
+    /* PDF 페이지 1장 당 할당되는 영역 (높이를 100% 활용하여 자동 스케일링) */
     .custom-print-page {
-        width: 794px; /* A4 픽셀 고정 */
-        height: 1123px; /* A4 픽셀 고정 */
-        padding: 40px 30px;
+        width: 100%;
+        height: 277mm; /* A4(297mm) - margin(20mm) = 정확히 1페이지 분량 */
+        padding: 0;
         box-sizing: border-box;
         page-break-after: always;
         break-after: page;
         display: flex;
         flex-direction: column;
         background: #ffffff;
-        margin: 0 auto;
+    }
+    .custom-print-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
     }
 }
 </style>
@@ -90,7 +89,8 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
     <button class="tab" onclick="switchView('split')">분리</button>
     <button class="tab" onclick="switchView('input')">입력</button>
     <button class="tab share-btn" onclick="openShareModal()">📷 전송</button>
-    <button class="tab print-btn" onclick="triggerPrint()">🖨️</button> <button class="tab" onclick="openSettings()">⚙️</button>
+    <button class="tab print-btn" onclick="triggerPrint()">🖨️</button>
+    <button class="tab" onclick="openSettings()">⚙️</button>
   </div>
 </div>
 
@@ -104,6 +104,7 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 
 <div class="infobar" id="infobar"></div>
 <div class="content" id="content"></div>
+
 <div id="print-container"></div>
 
 <div class="modal-bg hidden" id="modal-bg" onclick="closeSettings()">
@@ -139,9 +140,10 @@ window.onpopstate = function () {
 };
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
-const STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
-let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
+// [핵심 변경] 기존 데이터가 보존되도록 오리지널 키 이름 복구!!
+const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
 
+let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
 const busNum = localStorage.getItem('busNumber') || '101';
 document.getElementById('appTitle').innerText = `${busNum}번 ${displayTitle}`;
 
@@ -349,43 +351,47 @@ function openShareModal() { document.getElementById('share-modal-bg').classList.
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
 /* ========================================================================= */
-/* [핵심 마법] 사진 전송과 인쇄(PDF)가 100% 동일하게 렌더링 되도록 해주는 공통 함수 */
+/* [핵심 마법] 사진 전송과 인쇄(PDF) 100% 동일하게 그리는 공통 모듈 */
 /* ========================================================================= */
 function getScheduleHTML(target) {
-    let titleSuffix = '';
-    if (target === 'am') titleSuffix = ' (오전)';
-    if (target === 'pm') titleSuffix = ' (오후)';
-    if (target === 'integrated') titleSuffix = ' (통합)';
-    const exportTitle = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
+    // 1. 타겟 문자열 정리 (제목, 왼쪽문구)
+    const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
+    let leftText = '';
+    if (target === 'am') leftText = '오전';
+    if (target === 'pm') leftText = '오후';
 
-    let contentHTML = `<h2 style="text-align:center; margin:0 0 15px 0; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
+    // 2. 헤더 생성 ("101번 배차 시간표" 및 "오전/오후", "운행대수" 동일선상 배치)
+    let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:32px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
+    contentHTML += `<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px; border-bottom:2px solid #1e3a8a; padding-bottom:5px;">`;
+    contentHTML += `<div style="font-size:24px; font-weight:900; color:#1e3a8a;">${leftText}</div>`;
+    contentHTML += `<div style="font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
+    contentHTML += `</div>`;
 
     let hasAnyTT = false;
     for(let key in tts) {
         if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; }
     }
 
-    const maxTableHeight = 930; 
+    // 3. 무조건 A4 영역을 가득 채우는 Flex Table + Font Scaling 로직
     const totalRows = hasAnyTT ? busCount * 3 : busCount; 
-    const exactCellHeight = maxTableHeight / (totalRows + 1); 
+    const scale = Math.min(1, 48 / totalRows); 
     
-    const fsSeq = hasAnyTT ? Math.max(9, Math.floor(exactCellHeight * 0.65)) : Math.max(10, Math.floor(exactCellHeight * 0.50)); 
-    const fsTime = hasAnyTT ? Math.max(10, Math.floor(exactCellHeight * 0.75)) : Math.max(10, Math.floor(exactCellHeight * 0.60)); 
-    const fsSub = Math.max(11, Math.floor(exactCellHeight * 0.60)); 
-    const fsDepOnly = Math.max(14, Math.floor(exactCellHeight * 0.60)); 
+    const fsSeq = Math.max(10, Math.floor(22 * scale)); 
+    const fsTime = Math.max(11, Math.floor(26 * scale)); 
+    const fsSub = Math.max(9, Math.floor(14 * scale)); 
+    const fsDepOnly = Math.max(14, Math.floor(32 * scale)); 
 
     let tableHTML = `<style>
-        .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; }
-        .export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; box-sizing:border-box; }
-        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(12, Math.floor(exactCellHeight * 0.5))}px; font-weight:800; color:#1e293b; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.dep-s { color:#dc2626; -webkit-print-color-adjust:exact; color-adjust:exact; }
-        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; min-height: 0; }
+        .export-wrapper table { flex: 1; border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border: 2px solid #94a3b8; }
+        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(11, Math.floor(16 * scale))}px; font-weight:800; color:#1e293b; -webkit-print-color-adjust:exact; color-adjust:exact; padding:2px !important; }
+        .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; -webkit-print-color-adjust:exact; color-adjust:exact; padding: 2px; }
+        .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; }
+        .export-wrapper td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; }
+        .export-wrapper td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; }
+        .export-wrapper td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; }
+        .export-wrapper td.dep-s { color:#dc2626; }
+        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; }
         .export-wrapper td.tt { border-right:1px dashed #e2e8f0; }
     </style><div class="export-wrapper">`;
 
@@ -434,7 +440,7 @@ function getScheduleHTML(target) {
     return contentHTML + tableHTML;
 }
 
-// [사진 전송 실행] 위 공통 함수를 사용하여 이미지 생성
+// [사진 생성 엔진]
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -496,7 +502,7 @@ function downloadBlob(blob, filename) {
     document.body.removeChild(a);
 }
 
-// [인쇄(PDF) 실행] 위 공통 함수를 사용하여 브라우저 인쇄 화면 강제 호출
+// [인쇄 엔진] 사진 생성과 100% 똑같은 코드를 불러와서 인쇄 화면으로 띄움
 function triggerPrint() {
     if (currentView === 'input') {
         document.body.classList.remove('custom-printing');
