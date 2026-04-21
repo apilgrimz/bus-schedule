@@ -16,6 +16,7 @@
     .btn-green { background: #38a169 !important; }
     .btn-purple { background: #805ad5 !important; }
     .btn-gray { background: #718096 !important; margin-top: 25px; } 
+    .btn-outline { background: white !important; color: #2b6cb0; border: 2px solid #2b6cb0; margin-bottom: 25px; }
 </style>
 </head>
 <body>
@@ -23,6 +24,8 @@
   <div class="menu-box">
     <h1>🚌 101번 배차 마스터</h1>
     
+    <button onclick="shareApp()" class="btn btn-outline">🔗 앱 공유하기</button>
+
     <a href="배차시간표_평일.html" class="btn">평일 배차시간표</a>
     <a href="배차시간표_토요일.html" class="btn btn-green">토요일 배차시간표</a>
     <a href="배차시간표_일요일.html" class="btn btn-red">일요일 배차시간표</a>
@@ -33,6 +36,19 @@
 
   <script>
       if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+
+      // 앱 링크 공유 기능
+      function shareApp() {
+          if (navigator.share) {
+              navigator.share({
+                  title: '101번 배차 마스터',
+                  text: '101번 버스 배차 시간표 앱입니다. 아래 링크를 눌러 확인하세요.',
+                  url: window.location.href
+              }).catch(console.error);
+          } else {
+              alert('현재 브라우저에서는 공유 기능을 지원하지 않습니다. URL을 복사해주세요.');
+          }
+      }
 
       function exitApp() {
           if (confirm("앱을 종료하시겠습니까?")) {
@@ -46,19 +62,11 @@
                           </p>
                       </div>
                   `;
-                  
-                  // [핵심 변경 1] 홈으로 나갔다가 다시 앱을 켜면 무조건 홈 화면으로 리셋시킴
                   document.addEventListener("visibilitychange", function() {
-                      if (document.visibilityState === 'visible') {
-                          window.location.replace("index.html");
-                      }
+                      if (document.visibilityState === 'visible') window.location.replace("index.html");
                   });
-
-                  // [핵심 변경 2] 뒤로 가기를 누르면 먹통이 되지 않고 메인 홈으로 빠져나가게 함
                   window.history.pushState(null, null, window.location.href);
-                  window.onpopstate = function () {
-                      window.location.replace("index.html");
-                  };
+                  window.onpopstate = function () { window.location.replace("index.html"); };
               }, 100);
           }
       }

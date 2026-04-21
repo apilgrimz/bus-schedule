@@ -9,6 +9,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2563eb">
 <title>101번 배차 관리</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html { background-color: #e2e8f0; height: 100%; display: flex; justify-content: center; }
@@ -20,6 +21,7 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .tab { padding:7px 10px; border-radius:8px; font-size:12px; font-weight:bold; border:none; cursor:pointer; background:#f0f0f0; color:#555; transition: 0.2s; }
 .tab.active { background:#2563eb; color:#fff }
 .tab.print-btn { background:#10b981; color:#fff; } 
+.tab.share-btn { background:#8b5cf6; color:#fff; } /* 캡처 전송 버튼 스타일 */
 
 .quick-nav { display: flex; background: #fff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; align-items: center; }
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
@@ -41,14 +43,14 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
-.modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; }
-.modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
+.modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; text-align:left; }
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
 @media print {
     html, body { height: auto !important; width: auto !important; max-width: none !important; display: block !important; overflow: visible !important; background: #fff !important; }
-    .topbar, .quick-nav, #modal-bg { display: none !important; }
+    .topbar, .quick-nav, #modal-bg, #share-modal-bg { display: none !important; }
     th { position: static !important; }
 }
 </style>
@@ -61,6 +63,7 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
     <button class="tab" onclick="switchView('input')">입력</button>
+    <button class="tab share-btn" onclick="openShareModal()">📷 전송</button>
     <button class="tab print-btn" onclick="window.print()">🖨️</button>
     <button class="tab" onclick="openSettings()">⚙️</button>
   </div>
@@ -80,7 +83,7 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 <div class="modal-bg hidden" id="modal-bg" onclick="closeSettings()">
   <div class="modal" onclick="event.stopPropagation()">
-    <h3>⚙️ 배차 설정</h3><br>
+    <h3 style="text-align:left;">⚙️ 배차 설정</h3><br>
     <div class="modal-row"><label>운행대수</label><div><input id="s-bc" type="number">대</div></div>
     <div class="modal-row"><label>회차지비율</label><input id="s-rt" type="text" style="width:80px"></div>
     <div class="modal-row"><label>오후시작</label><div><input id="s-pt" type="number" style="width:45px">회<input id="s-pb" type="number" style="width:45px">번</div></div>
@@ -88,6 +91,16 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
         <button style="flex:1; padding:10px; border-radius:8px; border:none; background:#eee;" onclick="closeSettings()">취소</button>
         <button style="flex:1; padding:10px; border-radius:8px; border:none; background:#2563eb; color:white; font-weight:bold;" onclick="applySettings()">적용</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="share-modal-bg" onclick="closeShareModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 style="margin-bottom:20px">📷 시간표 사진 전송</h3>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; font-weight:bold; font-size:14px;" onclick="captureAndShare('integrated')">통합 시간표 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold; font-size:14px;" onclick="captureAndShare('am')">오전 시간표 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold; font-size:14px;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
+    <button style="width:100%; padding:14px; border-radius:8px; background:#e2e8f0; color:#4a5568; border:none; font-weight:bold; margin-top:10px" onclick="closeShareModal()">닫기</button>
   </div>
 </div>
 
@@ -106,26 +119,20 @@ function exitApp() {
                     </p>
                 </div>
             `;
-            
-            // [핵심 변경 1] 홈으로 나갔다가 앱 다시 켜면 리셋
             document.addEventListener("visibilitychange", function() {
-                if (document.visibilityState === 'visible') {
-                    window.location.replace("index.html");
-                }
+                if (document.visibilityState === 'visible') window.location.replace("index.html");
             });
-
-            // [핵심 변경 2] 뒤로가기 누르면 메인 홈으로 이동
             window.history.pushState(null, null, window.location.href);
-            window.onpopstate = function () {
-                window.location.replace("index.html");
-            };
+            window.onpopstate = function () { window.location.replace("index.html"); };
         }, 100);
     }
 }
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
 const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
-document.getElementById('appTitle').innerText = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
+let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
+if(displayTitle === 'default_101') displayTitle = '101번 배차';
+document.getElementById('appTitle').innerText = displayTitle;
 
 window.addEventListener('DOMContentLoaded', () => {
     const navLinks = {
@@ -307,6 +314,123 @@ function applySettings(){
     busCount=Number(document.getElementById('s-bc').value); ratio=Number(document.getElementById('s-rt').value);
     pmTrip=Number(document.getElementById('s-pt').value); pmBus=Number(document.getElementById('s-pb').value);
     closeSettings(); saveData(); schedule=compute(); render();
+}
+
+/* 공유 기능 모달 제어 */
+function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
+function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
+
+/* A4 비율 이미지 생성 및 공유/저장 기능 */
+async function captureAndShare(target) {
+    closeShareModal();
+    
+    // 로딩 표시
+    const loading = document.createElement('div');
+    loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">이미지 생성 중...</div>';
+    document.body.appendChild(loading);
+
+    // A4 용지 비율 컨테이너 생성 (가로 800px, 세로 최소 1131px)
+    const exportDiv = document.createElement('div');
+    exportDiv.style.width = '800px';
+    exportDiv.style.minHeight = '1131px'; 
+    exportDiv.style.backgroundColor = '#ffffff';
+    exportDiv.style.padding = '40px';
+    exportDiv.style.boxSizing = 'border-box';
+    exportDiv.style.position = 'absolute';
+    exportDiv.style.left = '-9999px';
+    exportDiv.style.top = '0';
+    exportDiv.style.color = '#000';
+    exportDiv.style.fontFamily = "'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
+
+    let titleSuffix = '';
+    if (target === 'am') titleSuffix = ' (오전)';
+    if (target === 'pm') titleSuffix = ' (오후)';
+    if (target === 'integrated') titleSuffix = ' (통합)';
+    const exportTitle = `${displayTitle} 시간표${titleSuffix}`;
+
+    let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:28px; color:#1d4ed8;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:right; margin-bottom:20px; font-size:14px; color:#4b5563;">운행: ${busCount}대 / 회차지비율: ${ratio}</div>`;
+
+    // 캡처용 스타일 (화면의 CSS를 강제로 주입)
+    let tableHTML = `<style>
+        table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; font-size:14px; }
+        th { background:#dbeafe; border:1px solid #9ca3af; padding:8px 2px; text-align:center; }
+        td { border:1px solid #d1d5db; text-align:center; padding:6px 1px; }
+        td.seq { font-weight:bold; background:#f8fafc; }
+        td.dep-s { color:#dc2626; font-weight:bold; }
+        td.rest-bad { background:#fee2e2; color:#b91c1c; }
+        .tt, .hj, .arr { font-size:13px; }
+    </style>`;
+
+    const splitD = (pmTrip - 1) * busCount + pmBus;
+
+    // 선택된 유형에 따라 테이블 그리기
+    if (target === 'integrated') {
+        tableHTML += `<table>${thead([1,2,3,4,5,6])}<tbody>`;
+        for(let b=1; b<=busCount; b++) tableHTML += busRows(b, [1,2,3,4,5,6].map(t=>gs(b,t)));
+        tableHTML += `</tbody></table>`;
+    } else if (target === 'am') {
+        tableHTML += `<table>${thead([1,2,3])}<tbody>`;
+        for(let b=1; b<=busCount; b++) tableHTML += busRows(b, [1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+        tableHTML += `</tbody></table>`;
+    } else if (target === 'pm') {
+        tableHTML += `<table>${thead([1,2,3])}<tbody>`;
+        for(let p=0; p<busCount; p++){
+            const b = ((pmBus-1+p)%busCount)+1;
+            tableHTML += busRows(b, [1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
+        }
+        tableHTML += `</tbody></table>`;
+    }
+
+    exportDiv.innerHTML = contentHTML + tableHTML;
+    document.body.appendChild(exportDiv);
+
+    try {
+        // html2canvas로 화면 렌더링 (고화질 옵션 scale: 2)
+        const canvas = await html2canvas(exportDiv, { scale: 2, useCORS: true });
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], `${exportTitle}.png`, { type: 'image/png' });
+            
+            // 모바일 기기 등 공유 기능 지원 여부 확인
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: exportTitle,
+                        text: '배차 시간표를 공유합니다.'
+                    });
+                } catch (err) {
+                    console.log('공유 취소 또는 실패', err);
+                    // 실패 시 다운로드로 유도
+                    downloadBlob(blob, `${exportTitle}.png`);
+                }
+            } else {
+                // PC 등 공유 미지원 환경에서는 바로 다운로드
+                downloadBlob(blob, `${exportTitle}.png`);
+            }
+            
+            document.body.removeChild(exportDiv);
+            document.body.removeChild(loading);
+        }, 'image/png');
+    } catch (e) {
+        console.error(e);
+        alert("이미지 생성 중 오류가 발생했습니다.");
+        document.body.removeChild(exportDiv);
+        document.body.removeChild(loading);
+    }
+}
+
+// 브라우저 직접 다운로드 기능
+function downloadBlob(blob, filename) {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
 }
 
 loadData(); schedule=compute(); render();
