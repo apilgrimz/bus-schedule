@@ -39,9 +39,7 @@ td { border:1px solid #d1d5db; text-align:center; padding:1px; font-size:11px }
 td.seq { font-weight:bold; background:#f8fafc; width:28px }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-/* [핵심 1] 일반 화면 출발/도착 시각 파란색 색상 완벽 통일 */
-td.dep { font-weight: bold; color: #1d4ed8; }
-td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
+td.dep, td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 td.dep-s { color:#dc2626; font-weight:bold; }
 td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 0; line-height: 1.1; }
 
@@ -52,29 +50,36 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* --- [핵심 2] 인쇄(PDF) 완벽 최적화 --- */
-.print-only-title, .print-only-info { display: none; }
+/* 오전/오후 및 운행대수 같은 줄 정렬 스타일 (일반 뷰) */
+.split-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #1e40af; }
+.split-header.pm { border-bottom-color: #991b1b; }
+.split-header .title { font-size: 16px; font-weight: 900; color: #1e40af; }
+.split-header.pm .title { color: #991b1b; }
+.split-header .info { font-size: 14px; font-weight: bold; color: #475569; }
+
+.print-only-title { display: none; }
 
 @media print {
     html, body { height: 100% !important; background: #fff !important; overflow: visible !important; margin: 0 !important; }
     .topbar, .quick-nav, #modal-bg, #share-modal-bg, .print-hide, .infobar { display: none !important; }
     .content { overflow: visible !important; height: auto !important; padding: 0 !important; background: #fff !important; }
     
-    /* 인쇄 전용 제목과 운행대수 (큼직하게 표시) */
-    .print-only-title { display: block !important; text-align: center; font-size: 32px; font-weight: 900; margin-bottom: 5px; color: #1e3a8a; }
-    .print-only-info { display: block !important; text-align: right; font-size: 18px !important; font-weight: bold !important; color: #475569 !important; margin-bottom: 15px; }
+    .print-only-title { display: block !important; text-align: center; font-size: 32px; font-weight: 900; margin-bottom: 20px; color: #1e3a8a; }
+    
+    /* 인쇄 시 오전/오후 타이틀과 운행대수 크기를 완벽하게 동일하게 세팅 */
+    .split-header { margin-bottom: 15px; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .split-header .title { font-size: 24px !important; font-weight: 900 !important; }
+    .split-header .info { font-size: 24px !important; font-weight: bold !important; color: #334155 !important; }
     
     .print-full-page { height: 93vh !important; box-sizing: border-box; display: flex; flex-direction: column; }
     .split-grid { display: block !important; height: auto !important; padding: 0 !important; }
     .split-item { height: 93vh !important; width: 100% !important; margin: 0 !important; display: flex; flex-direction: column; }
     table { flex: 1; width: 100% !important; box-sizing: border-box; }
     
-    /* 인쇄용 폰트 대폭 확대 및 색상 일치 */
     th { position: static !important; font-size: 14px !important; padding: 6px !important; background: #e2e8f0 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
     td { font-size: 14px !important; padding: 2px !important; }
     td.seq { font-size: 16px !important; background: #f8fafc !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
     
-    /* 인쇄 시 출발/도착 시각 색깔 완벽 통일 */
     td.dep, td.arr { font-size: 16px !important; font-weight: bold !important; color: #1d4ed8 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
     td.dep-only { font-size: 20px !important; font-weight: bold !important; color: #1d4ed8 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
     td.dep-s { color: #dc2626 !important; }
@@ -83,7 +88,6 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
     td.rest-bad { background: #fee2e2 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
     
     .page-break { page-break-before: always !important; break-before: page !important; }
-    .section-title { font-size: 16px !important; margin-bottom: 5px !important; }
 }
 </style>
 </head>
@@ -102,11 +106,11 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 </div>
 
 <div class="quick-nav">
-  <a href="index.html" class="nav-btn home">🏠 홈</a>
-  <a href="배차시간표_평일.html" id="link-weekday" class="nav-btn">평일</a>
-  <a href="배차시간표_토요일.html" id="link-saturday" class="nav-btn">토요일</a>
-  <a href="배차시간표_일요일.html" id="link-sunday" class="nav-btn">일요일</a>
-  <a href="배차시간표_방학.html" id="link-vacation" class="nav-btn">방학</a>
+  <button onclick="location.replace('index.html')" class="nav-btn home">🏠 홈</button>
+  <button onclick="location.replace('배차시간표_평일.html')" id="link-weekday" class="nav-btn">평일</button>
+  <button onclick="location.replace('배차시간표_토요일.html')" id="link-saturday" class="nav-btn">토요일</button>
+  <button onclick="location.replace('배차시간표_일요일.html')" id="link-sunday" class="nav-btn">일요일</button>
+  <button onclick="location.replace('배차시간표_방학.html')" id="link-vacation" class="nav-btn">방학</button>
 </div>
 
 <div class="infobar" id="infobar"></div>
@@ -138,9 +142,9 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 <script>
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(console.error); }
 
-// 앱 타이틀 설정 (저장된 버스 번호 활용)
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
-const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
+// 버전2 키를 사용하여 기존 데이터를 비우고 새로운 초기값을 받도록 강제 적용
+const STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
 let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
 
 const busNum = localStorage.getItem('busNumber') || '101';
@@ -161,6 +165,7 @@ window.addEventListener('DOMContentLoaded', () => {
 let busCount=16, ratio=0.525, pmTrip=3, pmBus=4, currentView='integrated';
 const deps={}, tts={};
 
+// [사진 기반 초기 데이터 적용] 누군가 링크를 열었을 때 완벽한 초기 상태 표시
 function loadData() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -172,8 +177,22 @@ function loadData() {
         Object.assign(deps, parsed.deps || {});
         Object.assign(tts, parsed.tts || {});
     } else {
-        const dd={"1-1":"4:45","1-2":"7:45","3-3":"11:37","3-6":"22:15"};
-        Object.assign(deps, dd);
+        const decodedName = decodeURIComponent(fileName);
+        let defaultDeps = {};
+        if (decodedName.includes('토요일')) {
+            busCount = 14; ratio = 0.525; pmTrip = 3; pmBus = 2;
+            defaultDeps = {"1-1":"4:45", "1-2":"8:05", "1-3":"11:35", "2-3":"11:50", "2-4":"15:21", "2-5":"18:55", "1-6":"22:15"};
+        } else if (decodedName.includes('일요일')) {
+            busCount = 12; ratio = 0.525; pmTrip = 3; pmBus = 2;
+            defaultDeps = {"1-1":"4:45", "2-1":"4:59", "1-2":"8:07", "1-3":"11:33", "2-3":"11:50", "2-4":"15:23", "2-5":"18:57", "1-6":"22:15"};
+        } else if (decodedName.includes('방학')) {
+            busCount = 15; ratio = 0.525; pmTrip = 3; pmBus = 4;
+            defaultDeps = {"1-1":"4:45", "1-2":"7:56", "3-3":"11:37", "4-3":"11:50", "4-4":"15:20", "4-5":"19:07", "7-5":"S", "3-6":"22:15"};
+        } else { // 평일
+            busCount = 16; ratio = 0.525; pmTrip = 3; pmBus = 4;
+            defaultDeps = {"1-1":"4:45", "1-2":"7:45", "3-3":"11:37", "4-3":"11:50", "4-4":"15:19", "4-5":"19:03", "8-5":"S", "3-6":"22:15"};
+        }
+        Object.assign(deps, defaultDeps);
     }
 }
 
@@ -250,7 +269,7 @@ let schedule;
 const gs=(b,t)=>schedule.find(s=>s.bus===b&&s.trip===t);
 
 function render(){
-    document.getElementById('infobar').innerHTML=`<span><b>${busCount}</b>대</span><span>비율 <b>${ratio}</b></span><span>오후 <b>${pmTrip}회${pmBus}번</b>~</span>`;
+    document.getElementById('infobar').innerHTML=`<span>운행: <b>${busCount}</b>대</span><span>비율 <b>${ratio}</b></span><span>오후 <b>${pmTrip}회${pmBus}번</b>~</span>`;
     const c=document.getElementById('content');
     if(currentView==='integrated') renderIntegrated(c);
     else if(currentView==='split') renderSplit(c);
@@ -261,7 +280,6 @@ function busRows(bus,slots){
     let r1=`<td rowspan="3" class="seq">${bus}</td>`, r2='', r3='';
     slots.forEach((s,i)=>{
         const isS=s&&s.fd==='S'; 
-        // class="dep"가 반드시 들어가서 파란색이 적용되도록 처리
         r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}">${s?fmt(s.fd):''}</td>`;
         if(i<slots.length-1){ const ns=slots[i+1]; r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}">${ns&&ns.dr!=null?ns.dr:''}</td>`; }
         r2+=`<td class="tt">${s&&s.tt||''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
@@ -276,11 +294,12 @@ function thead(trips){
     return `<thead>${h}</tr></thead>`;
 }
 
-/* [핵심 3] 인쇄 시 타이틀 및 오전/오후 분리 완벽 적용 */
 function renderIntegrated(el){
     let h=`<div class="print-full-page" style="padding:8px">
            <div class="print-only-title">${fullPageTitle}</div>
-           <div class="print-only-info">운행대수: ${busCount}대</div>
+           <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+               <div style="font-size:24px; font-weight:bold; color:#475569;" class="print-only-title">운행대수: ${busCount}대</div>
+           </div>
            <table>${thead([1,2,3,4,5,6])}<tbody>`;
     for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3,4,5,6].map(t=>gs(b,t)));
     el.innerHTML=h+'</tbody></table></div>';
@@ -288,18 +307,23 @@ function renderIntegrated(el){
 
 function renderSplit(el){
     const splitD=(pmTrip-1)*busCount+pmBus;
-    // 오전
     let h=`<div class="split-grid"><div class="split-item">
            <div class="print-only-title">${fullPageTitle}</div>
-           <div class="print-only-info">운행대수: ${busCount}대</div>
-           <div class="section-title section-am">오전</div><table>${thead([1,2,3])}<tbody>`;
+           <div class="split-header">
+               <div class="title">오전</div>
+               <div class="info">운행대수: ${busCount}대</div>
+           </div>
+           <table>${thead([1,2,3])}<tbody>`;
     for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
     h+=`</tbody></table></div>`;
-    // 오후 (새 페이지)
+    
     h+=`<div class="split-item page-break">
         <div class="print-only-title">${fullPageTitle}</div>
-        <div class="print-only-info">운행대수: ${busCount}대</div>
-        <div class="section-title section-pm">오후 <span class="print-hide">(${pmTrip}회${pmBus}번~)</span></div><table>${thead([1,2,3])}<tbody>`;
+        <div class="split-header pm">
+            <div class="title">오후 <span class="print-hide">(${pmTrip}회${pmBus}번~)</span></div>
+            <div class="info">운행대수: ${busCount}대</div>
+        </div>
+        <table>${thead([1,2,3])}<tbody>`;
     for(let p=0;p<busCount;p++){
         const b=((pmBus-1+p)%busCount)+1;
         h+=busRows(b,[1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
@@ -350,7 +374,7 @@ function applySettings(){
 function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
-/* === [핵심 4] 사진 전송 시 폰트 비율 디테일 조정 === */
+/* === 캡처(사진 전송) 폰트 크기 완벽 조정 === */
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -380,7 +404,7 @@ async function captureAndShare(target) {
     const exportTitle = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
 
     let contentHTML = `<h2 style="text-align:center; margin-bottom:10px; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:18px; font-weight:bold; color:#475569; line-height:1;">운행대수: ${busCount}대</div>`;
+    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:22px; font-weight:bold; color:#475569; line-height:1;">운행대수: ${busCount}대</div>`;
 
     let hasAnyTT = false;
     for(let key in tts) {
@@ -391,26 +415,21 @@ async function captureAndShare(target) {
     const totalRows = hasAnyTT ? busCount * 3 : busCount; 
     const exactCellHeight = maxTableHeight / (totalRows + 1); 
     
-    // 운행시간이 있을 때는 보조 글자를 대폭 키우고, 없을 때는 휑하지 않게 시각/순번 크기를 살짝 낮춤
-    const fsSeq = hasAnyTT ? Math.max(9, Math.floor(exactCellHeight * 0.65)) : Math.max(10, Math.floor(exactCellHeight * 0.55)); 
-    const fsTime = Math.max(10, Math.floor(exactCellHeight * 0.75)); 
-    const fsSub = Math.max(11, Math.floor(exactCellHeight * 0.60)); // 글자 크기 대폭 확대 (가독성 향상)
-    const fsDepOnly = Math.max(14, Math.floor(exactCellHeight * 0.65)); // 0.75에서 0.65로 약간 축소
+    const fsSeq = hasAnyTT ? Math.max(9, Math.floor(exactCellHeight * 0.65)) : Math.max(10, Math.floor(exactCellHeight * 0.50)); 
+    const fsTime = hasAnyTT ? Math.max(10, Math.floor(exactCellHeight * 0.75)) : Math.max(10, Math.floor(exactCellHeight * 0.60)); 
+    const fsSub = Math.max(11, Math.floor(exactCellHeight * 0.60)); 
+    const fsDepOnly = Math.max(14, Math.floor(exactCellHeight * 0.60)); 
 
     let tableHTML = `<style>
         .table-wrapper { flex: 1; width: 100%; }
         table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; box-sizing:border-box; }
         th { background:#e2e8f0; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(12, Math.floor(exactCellHeight * 0.5))}px; font-weight:800; color:#1e293b; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; }
         td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding:0 !important; height:${exactCellHeight}px; box-sizing:border-box; line-height:1; }
-        
         td.seq { font-weight:900; background:#f8fafc; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; }
-        
         td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; }
         td.arr { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-top:none; }
-        
         td.dep-only { font-size:${fsDepOnly}px; font-weight:900; color:#1d4ed8; }
         td.dep-s { color:#dc2626; }
-        
         td.tt, td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; border-top:1px dashed #e2e8f0; border-bottom:1px dashed #e2e8f0; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; }
         td.tt { border-right:1px dashed #e2e8f0; }
     </style><div class="table-wrapper">`;
@@ -464,7 +483,6 @@ async function captureAndShare(target) {
         const canvas = await html2canvas(exportDiv, { scale: 2, useCORS: true, windowWidth: 800, windowHeight: 1150 });
         canvas.toBlob(async (blob) => {
             const file = new File([blob], `${exportTitle}.png`, { type: 'image/png' });
-            
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try { await navigator.share({ files: [file], title: exportTitle, text: '배차 시간표를 공유합니다.' }); } 
                 catch (err) { downloadBlob(blob, `${exportTitle}.png`); }

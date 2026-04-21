@@ -10,7 +10,6 @@
     body { font-family: 'Malgun Gothic', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
     .menu-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; width: 85%; max-width: 400px; }
     h1 { color: #2d3748; font-size: 22px; margin-bottom: 25px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 5px; }
-    /* 버스 번호 입력칸 스타일 */
     .bus-input { width: 60px; font-size: 24px; font-weight: 900; text-align: center; border: none; border-bottom: 2px solid #3182ce; color: #1e3a8a; background: transparent; outline: none; }
     
     .btn { display: block; padding: 16px; margin-bottom: 12px; background: #3182ce; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s; cursor: pointer; border: none; width: 100%; box-sizing: border-box; }
@@ -28,20 +27,20 @@
     
     <button onclick="shareApp()" class="btn btn-outline">🔗 앱 공유하기</button>
 
-    <a href="배차시간표_평일.html" class="btn">평일 배차시간표</a>
-    <a href="배차시간표_토요일.html" class="btn btn-green">토요일 배차시간표</a>
-    <a href="배차시간표_일요일.html" class="btn btn-red">일요일 배차시간표</a>
-    <a href="배차시간표_방학.html" class="btn btn-purple">방학 배차시간표</a>
+    <button onclick="location.replace('배차시간표_평일.html')" class="btn">평일 배차시간표</button>
+    <button onclick="location.replace('배차시간표_토요일.html')" class="btn btn-green">토요일 배차시간표</button>
+    <button onclick="location.replace('배차시간표_일요일.html')" class="btn btn-red">일요일 배차시간표</button>
+    <button onclick="location.replace('배차시간표_방학.html')" class="btn btn-purple">방학 배차시간표</button>
   </div>
 
   <script>
       if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 
-      // 버스 번호 불러오기 및 저장
       window.onload = function() {
           const savedNum = localStorage.getItem('busNumber');
           if (savedNum) document.getElementById('busNumInput').value = savedNum;
       };
+      
       function saveBusNum() {
           localStorage.setItem('busNumber', document.getElementById('busNumInput').value || '101');
       }
@@ -57,7 +56,6 @@
               alert('현재 브라우저에서는 공유 기능을 지원하지 않습니다. URL을 복사해주세요.');
           }
       }
-      // 흰 백지가 나오게 하던 뒤로 가기 억제 코드는 모두 제거하여 네이티브처럼 한 번에 종료되게 했습니다.
   </script>
 </body>
 </html>
