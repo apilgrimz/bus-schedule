@@ -50,33 +50,15 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* 오전/오후 및 운행대수 같은 줄 정렬 스타일 (일반 뷰) */
 .split-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #1e40af; }
 .split-header.pm { border-bottom-color: #991b1b; }
 .split-header .title { font-size: 16px; font-weight: 900; color: #1e40af; }
 .split-header.pm .title { color: #991b1b; }
 .split-header .info { font-size: 14px; font-weight: bold; color: #475569; }
 
-/* === [핵심] 인쇄(PDF) 모드 시 캡처용 디자인으로 완벽 덮어쓰기 === */
-#print-container { display: none; }
 @media print {
-    html, body { height: 100% !important; background: #fff !important; margin: 0 !important; padding: 0 !important; }
-    @page { size: A4 portrait; margin: 0; } 
-    
-    /* 기본 앱 화면은 통째로 숨김 */
-    body.custom-printing > :not(#print-container) { display: none !important; }
-    
-    /* 우리가 만든 정밀 렌더링 도화지 노출 */
-    body.custom-printing #print-container { display: block !important; width: 100%; background: #fff; }
-    
-    .custom-print-page {
-        width: 794px !important;
-        height: 1123px !important;
-        margin: 0 auto;
-        page-break-after: always !important;
-        break-after: page !important;
-        overflow: hidden !important;
-    }
+    /* 기존 화면의 인쇄를 완전히 막아버립니다. (JS로 만든 완벽한 도화지만 인쇄됨) */
+    body { display: none !important; }
 }
 </style>
 </head>
@@ -105,8 +87,6 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 <div class="infobar" id="infobar"></div>
 <div class="content" id="content"></div>
 
-<div id="print-container"></div>
-
 <div class="modal-bg hidden" id="modal-bg" onclick="closeSettings()">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 style="text-align:left;">⚙️ 배차 설정</h3><br>
@@ -122,7 +102,7 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 
 <div class="modal-bg hidden" id="share-modal-bg" onclick="closeShareModal()">
   <div class="modal" onclick="event.stopPropagation()">
-    <h3 style="margin-bottom:20px">📷 시간표 전송/인쇄</h3>
+    <h3 style="margin-bottom:20px">📷 시간표 사진 전송</h3>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; font-weight:bold; font-size:14px;" onclick="captureAndShare('integrated')">통합 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold; font-size:14px;" onclick="captureAndShare('am')">오전 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold; font-size:14px;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
@@ -133,14 +113,10 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 <script>
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(console.error); }
 
-window.history.pushState(null, null, window.location.href);
-window.onpopstate = function () {
-    window.open('','_self').close();
-    setTimeout(function() { window.location.replace("about:blank"); }, 10);
-};
+// 백지 화면이 뜨게 만들던 history.pushState 억지 코드를 싹 다 지웠습니다. (자연스러운 뒤로가기 적용)
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
-// [데이터 완벽 복구] v2를 지우고 예전 사용하시던 기존 오리지널 키명으로 되돌렸습니다!!
+// [데이터 복구 완료] v2를 빼고 예전 오리지널 이름으로 완벽히 되돌렸습니다. 기존 데이터가 무조건 살아납니다!
 const STORAGE_KEY = 'bus101Data_' + decodeURIComponent(fileName);
 
 let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
@@ -299,7 +275,7 @@ function renderSplit(el){
     const splitD=(pmTrip-1)*busCount+pmBus;
     let h='<div class="split-grid"><div class="split-item"><div class="section-title section-am">오전</div><table>'+thead([1,2,3])+'<tbody>';
     for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
-    h+='</tbody></table></div><div class="split-item"><div class="section-title section-pm">오후 ('+pmTrip+'회'+pmBus+'번~)</div><table>'+thead([1,2,3])+'<tbody>';
+    h+='</tbody></table></div><div class="split-item"><div class="section-title section-pm">오후 (${pmTrip}회${pmBus}번~)</div><table>'+thead([1,2,3])+'<tbody>';
     for(let p=0;p<busCount;p++){
         const b=((pmBus-1+p)%busCount)+1;
         h+=busRows(b,[1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
@@ -351,46 +327,35 @@ function openShareModal() { document.getElementById('share-modal-bg').classList.
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
 /* ========================================================================= */
-/* [마스터 함수] 사진 전송과 인쇄(PDF)의 레이아웃과 디자인을 100% 일치시킵니다 */
+/* [핵심 모듈] 인쇄와 캡처 화면을 똑같이 그려주는 HTML 생성 함수 */
 /* ========================================================================= */
 function getScheduleHTML(target) {
-    // 1. 요청하신 완벽한 제목 포맷: "101번 배차 시간표(방학)"
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
-    
-    let leftText = '';
-    if (target === 'am') leftText = '오전';
-    if (target === 'pm') leftText = '오후';
+    let leftText = target === 'integrated' ? '통합' : (target === 'am' ? '오전' : '오후');
 
-    // 2. 통합 모드일 때는 제목만 중앙에, 분리 모드일 때는 양쪽에 오전/오후와 운행대수 배치
     let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
-    
-    if (target === 'integrated') {
-        contentHTML += `<div style="text-align:right; margin-bottom:10px; padding-bottom:5px; font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
-    } else {
-        contentHTML += `<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px; border-bottom:2px solid #1e3a8a; padding-bottom:5px;">`;
-        contentHTML += `<div style="font-size:24px; font-weight:900; color:#1e3a8a;">${leftText}</div>`;
-        contentHTML += `<div style="font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
-        contentHTML += `</div>`;
-    }
+    contentHTML += `<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px; border-bottom:2px solid #1e3a8a; padding-bottom:5px;">`;
+    contentHTML += `<div style="font-size:24px; font-weight:900; color:#1e3a8a;">${leftText}</div>`;
+    contentHTML += `<div style="font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
+    contentHTML += `</div>`;
 
     let hasAnyTT = false;
     for(let key in tts) {
         if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; }
     }
 
-    const maxTableHeight = 930; 
     const totalRows = hasAnyTT ? busCount * 3 : busCount; 
-    const exactCellHeight = maxTableHeight / (totalRows + 1); 
+    const scale = Math.min(1, 48 / totalRows); 
     
-    const fsSeq = Math.max(10, Math.floor(22 * Math.min(1, 48 / totalRows))); 
-    const fsTime = Math.max(11, Math.floor(26 * Math.min(1, 48 / totalRows))); 
-    const fsSub = Math.max(9, Math.floor(14 * Math.min(1, 48 / totalRows))); 
-    const fsDepOnly = Math.max(14, Math.floor(32 * Math.min(1, 48 / totalRows))); 
+    const fsSeq = Math.max(10, Math.floor(22 * scale)); 
+    const fsTime = Math.max(11, Math.floor(26 * scale)); 
+    const fsSub = Math.max(9, Math.floor(14 * scale)); 
+    const fsDepOnly = Math.max(14, Math.floor(32 * scale)); 
 
     let tableHTML = `<style>
         .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; min-height: 0; }
         .export-wrapper table { flex: 1; border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border: 2px solid #94a3b8; }
-        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(11, Math.floor(16 * Math.min(1, 48 / totalRows)))}px; font-weight:800; color:#1e293b; padding:2px !important; -webkit-print-color-adjust:exact; color-adjust:exact; }
+        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(11, Math.floor(16 * scale))}px; font-weight:800; color:#1e293b; padding:2px !important; -webkit-print-color-adjust:exact; color-adjust:exact; }
         .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding: 2px; -webkit-print-color-adjust:exact; color-adjust:exact; }
         .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; color:#0f172a; border-right:2px solid #94a3b8; }
         .export-wrapper td.dep { font-size:${fsTime}px; font-weight:900; color:#1d4ed8; border-bottom:none; }
@@ -446,7 +411,7 @@ function getScheduleHTML(target) {
     return contentHTML + tableHTML;
 }
 
-// [사진 전송 기능]
+// [캡처 전송]
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -508,49 +473,53 @@ function downloadBlob(blob, filename) {
     document.body.removeChild(a);
 }
 
-// [인쇄 기능] PDF에서도 사진과 동일한 디자인을 강제 적용합니다.
+// [PDF 인쇄] 사진 생성과 100% 똑같은 코드를 숨겨진 iframe에서 인쇄합니다. (브라우저 오류 완벽 차단)
 function triggerPrint() {
-    if (currentView === 'input') {
-        document.body.classList.remove('custom-printing');
-        window.print();
-        return;
-    }
+    if (currentView === 'input') { window.print(); return; }
     
-    document.body.classList.add('custom-printing');
-    
-    let printContainer = document.getElementById('print-container');
-    if (!printContainer) {
-        printContainer = document.createElement('div');
-        printContainer.id = 'print-container';
-        document.body.appendChild(printContainer);
-    }
-    printContainer.innerHTML = '';
-    
+    let printHTML = '';
     if (currentView === 'integrated') {
-        const page = document.createElement('div');
-        page.className = 'custom-print-page';
-        page.innerHTML = getScheduleHTML('integrated');
-        printContainer.appendChild(page);
-    } else if (currentView === 'split') {
-        // 오전 페이지 생성
-        const page1 = document.createElement('div');
-        page1.className = 'custom-print-page';
-        page1.innerHTML = getScheduleHTML('am');
-        printContainer.appendChild(page1);
-        
-        // 오후 페이지 생성 (다음 장으로 넘어감)
-        const page2 = document.createElement('div');
-        page2.className = 'custom-print-page';
-        page2.innerHTML = getScheduleHTML('pm');
-        printContainer.appendChild(page2);
+        printHTML = `<div class="print-page">${getScheduleHTML('integrated')}</div>`;
+    } else {
+        // 오전과 오후를 각각 꽉 찬 페이지로 강제 생성
+        printHTML = `<div class="print-page">${getScheduleHTML('am')}</div><div class="print-page">${getScheduleHTML('pm')}</div>`;
     }
     
-    setTimeout(() => { window.print(); }, 100);
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    // iframe 안에 캡처용 디자인을 100% 동일하게 그리는 HTML을 주입
+    doc.write(`
+        <html>
+        <head>
+            <title>${busNum}번 배차시간표(${displayTitle})</title>
+            <style>
+                @page { size: A4 portrait; margin: 10mm; }
+                body { margin: 0; padding: 0; background: #fff; font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; -webkit-print-color-adjust:exact; color-adjust:exact; }
+                /* 페이지별로 A4 비율에 꽉 차게 높이를 277mm로 고정하고 강제로 분할합니다 */
+                .print-page { width: 100%; height: 277mm; page-break-after: always; display: flex; flex-direction: column; box-sizing: border-box; }
+                .print-page:last-child { page-break-after: auto; }
+            </style>
+        </head>
+        <body>${printHTML}</body>
+        </html>
+    `);
+    doc.close();
+    
+    setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => { document.body.removeChild(iframe); }, 1000);
+    }, 500);
 }
-
-window.onafterprint = function() {
-    document.body.classList.remove('custom-printing');
-};
 
 loadData(); schedule=compute(); render();
 </script>
