@@ -50,7 +50,7 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* [그림자 인쇄 시스템 CSS - 1장 고정 철통 방어] */
+/* [그림자 인쇄 시스템 CSS - 1장 고정] */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -61,15 +61,15 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
     
     .custom-print-page { 
         width: 100%; 
-        height: 296mm; /* A4 세로 길이 297mm보다 1mm 작게 주어 완벽하게 1장에 묶음 */
-        padding: 15mm 10mm; /* 상하좌우 안전 여백 */
+        height: 296mm; 
+        padding: 15mm 10mm; 
         box-sizing: border-box; 
         page-break-after: always; 
         break-after: page; 
         background: #ffffff; 
         display: flex; 
         flex-direction: column;
-        overflow: hidden; /* 표가 조금이라도 길어지면 자르고 다음장으로 안 넘김 */
+        overflow: hidden; 
     }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
 }
@@ -268,11 +268,9 @@ function updatePrintContainer() {
         const p = document.createElement('div'); p.className = 'custom-print-page';
         p.innerHTML = getScheduleHTML('integrated'); pc.appendChild(p);
     } else if (currentView === 'split') {
-        const p1 = document.createElement('div'); p1.className = 'custom-print-page';
-        p1.innerHTML = getScheduleHTML('am'); pc.appendChild(p1);
-        
-        const p2 = document.createElement('div'); p2.className = 'custom-print-page';
-        p2.innerHTML = getScheduleHTML('pm'); pc.appendChild(p2);
+        // [핵심 변경] 분리 모드일 때 오전/오후를 한 페이지에 나란히 출력하도록 'split' 파라미터 전달!
+        const p = document.createElement('div'); p.className = 'custom-print-page';
+        p.innerHTML = getScheduleHTML('split'); pc.appendChild(p);
     }
 }
 
@@ -383,26 +381,26 @@ function importData(input) {
 }
 
 // =========================================================
-// [최종 최적화] 1장 강제 고정, 글자 뻥튀기 방지, 폭 60% 중앙정렬
+// [최종 해결] 부제목 가운데 정렬 및 분리 인쇄 나란히 배치
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
     
     let subtitleText = '';
-    if (target === 'am') subtitleText = `[ 오전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else if (target === 'pm') subtitleText = `[ 오후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+    if (target === 'am') subtitleText = `[ 오 전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+    else if (target === 'pm') subtitleText = `[ 오 후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+    else if (target === 'split') subtitleText = `운행대수: ${busCount}대`; // 나란히 출력될 때는 굳이 오전오후 텍스트 불필요
     else subtitleText = `운행대수: ${busCount}대`;
 
+    // [변경 1] 부제목(subtitleText)을 중앙 정렬(text-align: center)로 변경
     let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:10px; font-size:16px; font-weight:bold; color:#333;">${subtitleText}</div>`;
+    contentHTML += `<div style="text-align:center; margin-bottom:10px; font-size:16px; font-weight:bold; color:#333;">${subtitleText}</div>`;
 
     let hasAnyTT = false;
     for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
 
-    // 최대 표 높이를 기존 930에서 800으로 확 줄여 절대 안 넘어가게 세팅
     const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
     
-    // 운행시간이 없을 때 글자가 과도하게 커지는 현상 방지
     let fsSeq, fsDep, fsSub;
     if (hasAnyTT) {
         fsSeq = exactCellHeight * 0.6;
@@ -414,12 +412,13 @@ function getScheduleHTML(target) {
         fsSub = 12;  
     }
 
-    const tableWidth = target === 'integrated' ? '100%' : '60%';
+    // 사진 전송 시 오전/오후 단일 표는 60%, 나란히 인쇄(split)나 통합(integrated)은 100% 폭 사용
+    const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
 
-    // 넘치는 글자 원천 차단 (overflow:hidden, white-space:nowrap)
     let tableHTML = `<style>
         .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; }
-        .export-wrapper table { border-collapse:collapse; width:${tableWidth}; height:100%; margin:0 auto; table-layout:fixed; background:#fff; }
+        .table-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; gap:15px; } /* 나란히 배치를 위한 flex 추가 */
+        .export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; }
         .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; font-weight:800; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; }
         .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:2px solid #94a3b8; }
@@ -427,7 +426,7 @@ function getScheduleHTML(target) {
         .export-wrapper td.arr { font-size:${fsDep*0.9}px; font-weight:900; color:#1d4ed8; }
         .export-wrapper td.dep-s { color:#dc2626; }
         .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; }
-    </style><div class="export-wrapper">`;
+    </style><div class="export-wrapper"><div class="table-container">`;
 
     function getExportThead(trips) {
         let h = `<tr><th style="width:40px">순번</th>`;
@@ -450,21 +449,44 @@ function getScheduleHTML(target) {
     }
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
+    
     if (target === 'integrated') {
         tableHTML += `<table>${getExportThead([1,2,3,4,5,6])}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, [1,2,3,4,5,6].map(t=>gs(b,t)));
+        tableHTML += `</tbody></table>`;
     } else if (target === 'am') {
         tableHTML += `<table>${getExportThead([1,2,3])}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, [1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+        tableHTML += `</tbody></table>`;
     } else if (target === 'pm') {
         tableHTML += `<table>${getExportThead([1,2,3])}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
             tableHTML += getExportBusRows(b, [1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
         }
+        tableHTML += `</tbody></table>`;
+    } else if (target === 'split') { 
+        // [변경 2] 인쇄 시(split 타겟) 오전과 오후 테이블을 좌우로 나란히 배치합니다.
+        
+        // 왼쪽: 오전 테이블
+        tableHTML += `<div style="flex:1; display:flex; flex-direction:column;">
+                        <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #94a3b8; font-size:15px; border-radius:4px; color:#1e3a8a;">[ 오 전 ]</div>
+                        <table style="height:100%;">${getExportThead([1,2,3])}<tbody>`;
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, [1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+        tableHTML += `</tbody></table></div>`;
+        
+        // 오른쪽: 오후 테이블
+        tableHTML += `<div style="flex:1; display:flex; flex-direction:column;">
+                        <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #94a3b8; font-size:15px; border-radius:4px; color:#991b1b;">[ 오 후 ]</div>
+                        <table style="height:100%;">${getExportThead([1,2,3])}<tbody>`;
+        for(let p=0; p<busCount; p++){
+            const b = ((pmBus-1+p)%busCount)+1;
+            tableHTML += getExportBusRows(b, [1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
+        }
+        tableHTML += `</tbody></table></div>`;
     }
     
-    return contentHTML + tableHTML + `</tbody></table></div>`;
+    return contentHTML + tableHTML + `</div></div>`;
 }
 
 async function captureAndShare(target) {
