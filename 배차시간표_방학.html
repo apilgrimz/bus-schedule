@@ -50,13 +50,15 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
+/* [그림자 인쇄 시스템 CSS] */
 #print-container { display: none; }
 @media print {
-    html, body { height: auto !important; overflow: visible !important; background: #fff !important; margin: 0 !important; padding: 0 !important; display: block !important; }
-    @page { size: A4 portrait; margin: 0; }
-    body.custom-printing > :not(#print-container) { display: none !important; }
-    body.custom-printing #print-container { display: block !important; width: 100%; background: #fff; }
-    .custom-print-page { width: 100%; padding: 40px 30px; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; }
+    html, body { height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    /* 인쇄 모드가 활성화되면 기본 UI를 전부 숨깁니다 */
+    body.use-custom-print > *:not(#print-container) { display: none !important; }
+    body.use-custom-print #print-container { display: block !important; width: 100%; background: #fff; }
+    
+    .custom-print-page { width: 100%; padding: 40px 30px; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: block; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
 }
 </style>
@@ -234,6 +236,36 @@ function render(){
     if(currentView==='integrated') renderIntegrated(c);
     else if(currentView==='split') renderSplit(c);
     else renderInput(c);
+
+    // [핵심 해결] 탭을 바꿀 때마다 인쇄 페이지 2장을 몰래 미리 그려둡니다!
+    updatePrintContainer();
+}
+
+// 백그라운드 인쇄 화면 생성 함수
+function updatePrintContainer() {
+    let pc = document.getElementById('print-container');
+    if (!pc) return;
+    pc.innerHTML = '';
+    
+    // 입력 모드일 때는 기본 화면 그대로 인쇄되도록 합니다.
+    if (currentView === 'input') {
+        document.body.classList.remove('use-custom-print');
+        return; 
+    }
+    
+    // 통합/분리 모드일 때는 우리가 만든 예쁜 템플릿을 인쇄합니다.
+    document.body.classList.add('use-custom-print');
+    
+    if (currentView === 'integrated') {
+        const p = document.createElement('div'); p.className = 'custom-print-page';
+        p.innerHTML = getScheduleHTML('integrated'); pc.appendChild(p);
+    } else if (currentView === 'split') {
+        const p1 = document.createElement('div'); p1.className = 'custom-print-page';
+        p1.innerHTML = getScheduleHTML('am'); pc.appendChild(p1);
+        
+        const p2 = document.createElement('div'); p2.className = 'custom-print-page';
+        p2.innerHTML = getScheduleHTML('pm'); pc.appendChild(p2);
+    }
 }
 
 function busRows(bus,slots){
@@ -346,14 +378,14 @@ function importData(input) {
 // [핵심] 인쇄 및 사진용 HTML 생성 (요청하신 정확한 텍스트 반영)
 // =========================================================
 function getScheduleHTML(target) {
-    // 1. 요청하신 1줄 제목 포맷: "101번 배차 시간표(평일)"
+    // 1. 요청하신 1줄 제목: "101번 배차 시간표(평일)"
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
     
-    // 2. 요청하신 2줄 부제목 포맷: "오전 | 운행대수: 16대" (나머지 텍스트 완전 삭제)
+    // 2. 요청하신 2줄 부제목: "오전 | 운행대수: 16대" (나머지 텍스트는 전부 제외)
     let subtitleText = '';
-    if (target === 'am') subtitleText = `오전 &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else if (target === 'pm') subtitleText = `오후 &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else subtitleText = `운행대수: ${busCount}대`; // 통합의 경우
+    if (target === 'am') subtitleText = `[ 오전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+    else if (target === 'pm') subtitleText = `[ 오후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+    else subtitleText = `운행대수: ${busCount}대`; // 통합 화면일 경우
 
     let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:32px; color:#000; font-weight:900;">${exportTitle}</h2>`;
     contentHTML += `<div style="text-align:right; margin-bottom:10px; font-size:18px; font-weight:bold; color:#333;">${subtitleText}</div>`;
@@ -433,36 +465,10 @@ async function captureAndShare(target) {
 }
 
 function triggerPrint() {
-    if (currentView === 'input') { window.print(); return; }
-    
-    // 인쇄 모드 시작
-    document.body.classList.add('custom-printing');
-    let pc = document.getElementById('print-container');
-    pc.innerHTML = '';
-    
-    if (currentView === 'integrated') {
-        const p = document.createElement('div'); p.className = 'custom-print-page';
-        p.innerHTML = getScheduleHTML('integrated'); pc.appendChild(p);
-    } else {
-        // 분리 인쇄: 오전 페이지 추가
-        const p1 = document.createElement('div'); p1.className = 'custom-print-page';
-        p1.innerHTML = getScheduleHTML('am'); pc.appendChild(p1);
-        
-        // 분리 인쇄: 오후 페이지 추가
-        const p2 = document.createElement('div'); p2.className = 'custom-print-page';
-        p2.innerHTML = getScheduleHTML('pm'); pc.appendChild(p2);
-    }
-    
-    // 약간의 딜레이 후 브라우저 인쇄 호출 (버그 픽스 구역)
-    setTimeout(() => { 
-        window.print(); 
-    }, 100);
+    // 이제 화면 전환이나 딜레이 없이 순수하게 브라우저 인쇄 기능만 호출합니다. 
+    // 백그라운드에 이미 다 만들어져 있습니다!
+    window.print(); 
 }
-
-// [중요 버그 수정] 인쇄 대화상자가 완전히 닫힌 후(취소 또는 완료)에만 원래 화면으로 복귀합니다.
-window.addEventListener('afterprint', () => {
-    document.body.classList.remove('custom-printing');
-});
 
 loadData(); schedule=compute(); render();
 </script>
