@@ -54,7 +54,6 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 #print-container { display: none; }
 @media print {
     html, body { height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-    /* 인쇄 모드가 활성화되면 기본 UI를 전부 숨깁니다 */
     body.use-custom-print > *:not(#print-container) { display: none !important; }
     body.use-custom-print #print-container { display: block !important; width: 100%; background: #fff; }
     
@@ -237,23 +236,19 @@ function render(){
     else if(currentView==='split') renderSplit(c);
     else renderInput(c);
 
-    // [핵심 해결] 탭을 바꿀 때마다 인쇄 페이지 2장을 몰래 미리 그려둡니다!
     updatePrintContainer();
 }
 
-// 백그라운드 인쇄 화면 생성 함수
 function updatePrintContainer() {
     let pc = document.getElementById('print-container');
     if (!pc) return;
     pc.innerHTML = '';
     
-    // 입력 모드일 때는 기본 화면 그대로 인쇄되도록 합니다.
     if (currentView === 'input') {
         document.body.classList.remove('use-custom-print');
         return; 
     }
     
-    // 통합/분리 모드일 때는 우리가 만든 예쁜 템플릿을 인쇄합니다.
     document.body.classList.add('use-custom-print');
     
     if (currentView === 'integrated') {
@@ -375,35 +370,53 @@ function importData(input) {
 }
 
 // =========================================================
-// [핵심] 인쇄 및 사진용 HTML 생성 (요청하신 정확한 텍스트 반영)
+// [핵심 해결] 제목 누락, 폰트 크기 고정, 표 가로폭 60% 조정
 // =========================================================
 function getScheduleHTML(target) {
-    // 1. 요청하신 1줄 제목: "101번 배차 시간표(평일)"
+    // 1. 요청하신 1줄 제목
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
     
-    // 2. 요청하신 2줄 부제목: "오전 | 운행대수: 16대" (나머지 텍스트는 전부 제외)
+    // 2. 요청하신 2줄 부제목
     let subtitleText = '';
     if (target === 'am') subtitleText = `[ 오전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
     else if (target === 'pm') subtitleText = `[ 오후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else subtitleText = `운행대수: ${busCount}대`; // 통합 화면일 경우
+    else subtitleText = `운행대수: ${busCount}대`;
 
-    let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:32px; color:#000; font-weight:900;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:10px; font-size:18px; font-weight:bold; color:#333;">${subtitleText}</div>`;
+    // [중요 수정] 이 제목 태그가 최종 반환될 때 포함되도록 수정했습니다!
+    let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:right; margin-bottom:10px; font-size:16px; font-weight:bold; color:#333;">${subtitleText}</div>`;
 
     let hasAnyTT = false;
     for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
 
     const exactCellHeight = 930 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
+    
+    // [중요 수정] 운행시간이 없을 때 글자가 비정상적으로 커지지 않도록 고정 크기 적용
+    let fsSeq, fsDep, fsSub;
+    if (hasAnyTT) {
+        fsSeq = exactCellHeight * 0.6;
+        fsDep = exactCellHeight * 0.75;
+        fsSub = exactCellHeight * 0.55;
+    } else {
+        fsSeq = 14;  // 순번 글자 고정
+        fsDep = 18;  // 출발시간 글자 고정
+        fsSub = 12;  // 여유 폭
+    }
+
+    // [중요 수정] 분리 인쇄 시 표가 양옆으로 너무 늘어나지 않도록 60% 폭으로 제한
+    const tableWidth = target === 'integrated' ? '100%' : '60%';
+
     let tableHTML = `<style>
         .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; }
-        .export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; }
-        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${Math.max(12, exactCellHeight*0.5)}px; font-weight:800; height:${exactCellHeight}px; }
+        /* 분리 인쇄 시 표 폭 제한 & 중앙 정렬 (margin: 0 auto) */
+        .export-wrapper table { border-collapse:collapse; width:${tableWidth}; height:100%; margin:0 auto; table-layout:fixed; background:#fff; }
+        .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; font-weight:800; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; }
         .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; }
-        .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${exactCellHeight*0.6}px; border-right:2px solid #94a3b8; }
-        .export-wrapper td.dep { font-size:${exactCellHeight*0.75}px; font-weight:900; color:#1d4ed8; }
-        .export-wrapper td.arr { font-size:${exactCellHeight*0.7}px; font-weight:900; color:#1d4ed8; }
+        .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:2px solid #94a3b8; }
+        .export-wrapper td.dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; }
+        .export-wrapper td.arr { font-size:${fsDep*0.9}px; font-weight:900; color:#1d4ed8; }
         .export-wrapper td.dep-s { color:#dc2626; }
-        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${exactCellHeight*0.55}px; color:#64748b; font-weight:bold; }
+        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; }
     </style><div class="export-wrapper">`;
 
     function getExportThead(trips) {
@@ -440,7 +453,9 @@ function getScheduleHTML(target) {
             tableHTML += getExportBusRows(b, [1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
         }
     }
-    return tableHTML + `</tbody></table></div>`;
+    
+    // [중요 수정] 제목(contentHTML)과 표(tableHTML)를 모두 합쳐서 정상적으로 반환합니다!
+    return contentHTML + tableHTML + `</tbody></table></div>`;
 }
 
 async function captureAndShare(target) {
@@ -465,8 +480,6 @@ async function captureAndShare(target) {
 }
 
 function triggerPrint() {
-    // 이제 화면 전환이나 딜레이 없이 순수하게 브라우저 인쇄 기능만 호출합니다. 
-    // 백그라운드에 이미 다 만들어져 있습니다!
     window.print(); 
 }
 
