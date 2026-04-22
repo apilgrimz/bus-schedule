@@ -56,28 +56,27 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .split-header.pm .title { color: #991b1b; }
 .split-header .info { font-size: 14px; font-weight: bold; color: #475569; }
 
-/* === [핵심] 오전/오후 페이지 분리 인쇄를 위한 정밀 CSS === */
+/* === [핵심] 인쇄(PDF)를 사진 전송과 완벽하게 동일하게 만드는 마법의 CSS === */
 #print-container { display: none; }
 @media print {
-    /* 모바일 UI의 flex를 강제로 풀고 스크롤과 높이를 자동(auto)으로 만들어 종이 길이에 맞게 전개되도록 합니다 */
-    html, body { height: auto !important; overflow: visible !important; background: #fff !important; margin: 0 !important; padding: 0 !important; display: block !important; }
+    html, body { height: 100% !important; background: #fff !important; margin: 0 !important; padding: 0 !important; }
     @page { size: A4 portrait; margin: 0; }
     
+    /* 기본 화면은 전부 숨기고, 우리가 새로 만든 정밀 프린트 컨테이너만 보여줍니다. */
     body.custom-printing > :not(#print-container) { display: none !important; }
     body.custom-printing #print-container { display: block !important; width: 100%; background: #fff; }
     
     .custom-print-page {
-        width: 100%;
+        width: 794px; /* A4 픽셀 고정 */
+        height: 1123px; /* A4 픽셀 고정 */
         padding: 40px 30px;
         box-sizing: border-box;
         page-break-after: always;
         break-after: page;
+        display: flex;
+        flex-direction: column;
         background: #ffffff;
-    }
-    /* 마지막 페이지 뒤에는 빈 종이가 나오지 않도록 처리 */
-    .custom-print-page:last-child {
-        page-break-after: auto;
-        break-after: auto;
+        margin: 0 auto;
     }
 }
 </style>
@@ -133,8 +132,11 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 <script>
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(console.error); }
 
-// 앱 내의 모든 링크가 location.replace()를 사용하도록 구성되었으므로,
-// 안드로이드 뒤로가기 버튼을 누르면 방문 기록을 거치지 않고 즉시 앱이 종료됩니다.
+window.history.pushState(null, null, window.location.href);
+window.onpopstate = function () {
+    window.open('','_self').close();
+    setTimeout(function() { window.location.replace("about:blank"); }, 10);
+};
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
 const STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
@@ -350,16 +352,14 @@ function closeShareModal() { document.getElementById('share-modal-bg').classList
 /* [핵심 마법] 사진 전송과 인쇄(PDF)가 100% 동일하게 렌더링 되도록 해주는 공통 함수 */
 /* ========================================================================= */
 function getScheduleHTML(target) {
-    // 요청하신 포맷에 맞춰 제목과 부제목을 세팅합니다.
-    const exportTitle = `${busNum}번 ${displayTitle} 배차 시간표`;
-    
-    let subtitleText = '';
-    if (target === 'am') subtitleText = `[ 오전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else if (target === 'pm') subtitleText = `[ 오후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else subtitleText = `운행대수: ${busCount}대`;
+    let titleSuffix = '';
+    if (target === 'am') titleSuffix = ' (오전)';
+    if (target === 'pm') titleSuffix = ' (오후)';
+    if (target === 'integrated') titleSuffix = ' (통합)';
+    const exportTitle = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
 
-    let contentHTML = `<h2 style="text-align:center; margin:0 0 15px 0; font-size:32px; color:#000; font-weight:900; line-height:1;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:right; margin-bottom:12px; font-size:18px; font-weight:bold; color:#333; line-height:1;">${subtitleText}</div>`;
+    let contentHTML = `<h2 style="text-align:center; margin:0 0 15px 0; font-size:36px; color:#1e3a8a; font-weight:900; line-height:1;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:right; margin-bottom:15px; font-size:24px; font-weight:bold; color:#334155; line-height:1;">운행대수: ${busCount}대</div>`;
 
     let hasAnyTT = false;
     for(let key in tts) {
@@ -434,7 +434,7 @@ function getScheduleHTML(target) {
     return contentHTML + tableHTML;
 }
 
-// [사진 전송 실행] 
+// [사진 전송 실행] 위 공통 함수를 사용하여 이미지 생성
 async function captureAndShare(target) {
     closeShareModal();
     
@@ -464,15 +464,16 @@ async function captureAndShare(target) {
         const canvas = await html2canvas(exportDiv, { scale: 2, useCORS: true, windowWidth: 800, windowHeight: 1150 });
         canvas.toBlob(async (blob) => {
             let titleSuffix = '';
-            if (target === 'am') titleSuffix = '_오전';
-            if (target === 'pm') titleSuffix = '_오후';
-            const exportFileName = `${busNum}번_${displayTitle}_배차시간표${titleSuffix}.png`;
+            if (target === 'am') titleSuffix = ' (오전)';
+            if (target === 'pm') titleSuffix = ' (오후)';
+            if (target === 'integrated') titleSuffix = ' (통합)';
+            const exportTitle = `${busNum}번 ${displayTitle} 시간표${titleSuffix}`;
             
-            const file = new File([blob], exportFileName, { type: 'image/png' });
+            const file = new File([blob], `${exportTitle}.png`, { type: 'image/png' });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try { await navigator.share({ files: [file], title: exportFileName, text: '배차 시간표를 공유합니다.' }); } 
-                catch (err) { downloadBlob(blob, exportFileName); }
-            } else { downloadBlob(blob, exportFileName); }
+                try { await navigator.share({ files: [file], title: exportTitle, text: '배차 시간표를 공유합니다.' }); } 
+                catch (err) { downloadBlob(blob, `${exportTitle}.png`); }
+            } else { downloadBlob(blob, `${exportTitle}.png`); }
             document.body.removeChild(exportDiv);
             document.body.removeChild(loading);
         }, 'image/png');
@@ -495,9 +496,10 @@ function downloadBlob(blob, filename) {
     document.body.removeChild(a);
 }
 
-// [인쇄(PDF) 실행] 
+// [인쇄(PDF) 실행] 위 공통 함수를 사용하여 브라우저 인쇄 화면 강제 호출
 function triggerPrint() {
     if (currentView === 'input') {
+        document.body.classList.remove('custom-printing');
         window.print();
         return;
     }
@@ -518,26 +520,25 @@ function triggerPrint() {
         page.innerHTML = getScheduleHTML('integrated');
         printContainer.appendChild(page);
     } else if (currentView === 'split') {
-        // 오전 페이지 생성
         const page1 = document.createElement('div');
         page1.className = 'custom-print-page';
         page1.innerHTML = getScheduleHTML('am');
         printContainer.appendChild(page1);
         
-        // 오후 페이지 생성 (각각의 div가 page-break-after: always 속성을 가짐)
         const page2 = document.createElement('div');
         page2.className = 'custom-print-page';
         page2.innerHTML = getScheduleHTML('pm');
         printContainer.appendChild(page2);
     }
     
-    // 브라우저 렌더링을 기다린 후 프린트 대화상자 호출
-    setTimeout(() => { 
-        window.print(); 
-        // 프린트 창이 닫히면 원래 화면으로 복귀
-        document.body.classList.remove('custom-printing');
-    }, 300);
+    setTimeout(() => { window.print(); }, 100);
 }
+
+window.onafterprint = function() {
+    document.body.classList.remove('custom-printing');
+};
+
+loadData(); schedule=compute(); render();
 </script>
 </body>
 </html>
