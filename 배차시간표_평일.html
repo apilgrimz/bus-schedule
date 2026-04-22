@@ -352,7 +352,6 @@ function applySettings(){
 function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
 function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
 
-// [데이터 백업 및 복구]
 function exportData() {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) { alert("저장된 데이터가 없습니다."); return; }
@@ -380,7 +379,7 @@ function importData(input) {
 }
 
 // =========================================================
-// [핵심 변경] S 입력 시 3개 행을 통째로 합쳐서 대문짝만 한 'S' 표시
+// [수정 사항] 운행시간이 없을 때의 'S' 폰트 크기 명확히 지정! (fsDep * 1.4 적용)
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -431,7 +430,6 @@ function getScheduleHTML(target) {
         return `<thead>${h}</tr></thead>`;
     }
 
-    // [이곳이 포인트!] 셀 병합 기능을 적용한 테이블 바디 생성 부분
     function getExportBusRows(bus, slots) {
         let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="seq">${bus}</td>`, r2 = '', r3 = '';
         slots.forEach(s => {
@@ -440,18 +438,16 @@ function getScheduleHTML(target) {
             
             if (hasAnyTT) {
                 if (isS) {
-                    // S일 경우: rowspan="3" colspan="2"를 사용하여 블록 통째로 병합!
-                    r1 += `<td rowspan="3" colspan="2" class="dep-s" style="font-size:${fsDep * 2}px; background-color:#fef2f2;">S</td>`;
-                    // 통으로 합쳤으므로 r2, r3에는 빈칸을 추가하지 않습니다.
+                    r1 += `<td rowspan="3" colspan="2" class="dep-s" style="font-size:${fsDep * 2}px; font-weight:900; background-color:#fef2f2;">S</td>`;
                 } else {
-                    // 정상 시간표일 경우: 기존처럼 출발/운행/도착 3줄 분할 입력
                     r1 += `<td colspan="2" class="dep">${dep}</td>`;
                     r2 += `<td class="tt">${s&&s.tt?s.tt:''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
                     r3 += `<td colspan="2" class="arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
                 }
             } else { 
                 if (isS) {
-                    r1 += `<td colspan="2" class="dep-s" style="background-color:#fef2f2;">S</td>`;
+                    // [핵심] 운행시간이 없을 때의 S 글자 크기를 일반 출발시간 글자(fsDep)의 1.4배로 명확히 고정합니다!
+                    r1 += `<td colspan="2" class="dep-s" style="font-size:${fsDep * 1.4}px; font-weight:900; background-color:#fef2f2;">S</td>`;
                 } else {
                     r1 += `<td colspan="2" class="dep">${dep}</td>`; 
                 }
@@ -478,14 +474,12 @@ function getScheduleHTML(target) {
         }
         tableHTML += `</tbody></table>`;
     } else if (target === 'split') { 
-        // 왼쪽: 오전 테이블
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column;">
                         <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #94a3b8; font-size:15px; border-radius:4px; color:#1e3a8a;">[ 오 전 ]</div>
                         <table style="height:100%;">${getExportThead([1,2,3])}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, [1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
         tableHTML += `</tbody></table></div>`;
         
-        // 오른쪽: 오후 테이블
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column;">
                         <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #94a3b8; font-size:15px; border-radius:4px; color:#991b1b;">[ 오 후 ]</div>
                         <table style="height:100%;">${getExportThead([1,2,3])}<tbody>`;
