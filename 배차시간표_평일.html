@@ -50,14 +50,27 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* [그림자 인쇄 시스템 CSS] */
+/* [그림자 인쇄 시스템 CSS - 1장 고정 철통 방어] */
 #print-container { display: none; }
 @media print {
-    html, body { height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    html, body { height: 100% !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
     body.use-custom-print > *:not(#print-container) { display: none !important; }
     body.use-custom-print #print-container { display: block !important; width: 100%; background: #fff; }
     
-    .custom-print-page { width: 100%; padding: 40px 30px; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: block; }
+    @page { size: A4 portrait; margin: 0; }
+    
+    .custom-print-page { 
+        width: 100%; 
+        height: 296mm; /* A4 세로 길이 297mm보다 1mm 작게 주어 완벽하게 1장에 묶음 */
+        padding: 15mm 10mm; /* 상하좌우 안전 여백 */
+        box-sizing: border-box; 
+        page-break-after: always; 
+        break-after: page; 
+        background: #ffffff; 
+        display: flex; 
+        flex-direction: column;
+        overflow: hidden; /* 표가 조금이라도 길어지면 자르고 다음장으로 안 넘김 */
+    }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
 }
 </style>
@@ -370,48 +383,45 @@ function importData(input) {
 }
 
 // =========================================================
-// [핵심 해결] 제목 누락, 폰트 크기 고정, 표 가로폭 60% 조정
+// [최종 최적화] 1장 강제 고정, 글자 뻥튀기 방지, 폭 60% 중앙정렬
 // =========================================================
 function getScheduleHTML(target) {
-    // 1. 요청하신 1줄 제목
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
     
-    // 2. 요청하신 2줄 부제목
     let subtitleText = '';
     if (target === 'am') subtitleText = `[ 오전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
     else if (target === 'pm') subtitleText = `[ 오후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
     else subtitleText = `운행대수: ${busCount}대`;
 
-    // [중요 수정] 이 제목 태그가 최종 반환될 때 포함되도록 수정했습니다!
     let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
     contentHTML += `<div style="text-align:right; margin-bottom:10px; font-size:16px; font-weight:bold; color:#333;">${subtitleText}</div>`;
 
     let hasAnyTT = false;
     for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
 
-    const exactCellHeight = 930 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
+    // 최대 표 높이를 기존 930에서 800으로 확 줄여 절대 안 넘어가게 세팅
+    const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
     
-    // [중요 수정] 운행시간이 없을 때 글자가 비정상적으로 커지지 않도록 고정 크기 적용
+    // 운행시간이 없을 때 글자가 과도하게 커지는 현상 방지
     let fsSeq, fsDep, fsSub;
     if (hasAnyTT) {
         fsSeq = exactCellHeight * 0.6;
         fsDep = exactCellHeight * 0.75;
         fsSub = exactCellHeight * 0.55;
     } else {
-        fsSeq = 14;  // 순번 글자 고정
-        fsDep = 18;  // 출발시간 글자 고정
-        fsSub = 12;  // 여유 폭
+        fsSeq = Math.min(16, exactCellHeight * 0.5);  
+        fsDep = Math.min(20, exactCellHeight * 0.6);  
+        fsSub = 12;  
     }
 
-    // [중요 수정] 분리 인쇄 시 표가 양옆으로 너무 늘어나지 않도록 60% 폭으로 제한
     const tableWidth = target === 'integrated' ? '100%' : '60%';
 
+    // 넘치는 글자 원천 차단 (overflow:hidden, white-space:nowrap)
     let tableHTML = `<style>
         .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; }
-        /* 분리 인쇄 시 표 폭 제한 & 중앙 정렬 (margin: 0 auto) */
         .export-wrapper table { border-collapse:collapse; width:${tableWidth}; height:100%; margin:0 auto; table-layout:fixed; background:#fff; }
         .export-wrapper th { background:#e2e8f0 !important; border:1px solid #94a3b8; text-align:center; font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; font-weight:800; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; }
-        .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; }
+        .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:2px solid #94a3b8; }
         .export-wrapper td.dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; }
         .export-wrapper td.arr { font-size:${fsDep*0.9}px; font-weight:900; color:#1d4ed8; }
@@ -454,7 +464,6 @@ function getScheduleHTML(target) {
         }
     }
     
-    // [중요 수정] 제목(contentHTML)과 표(tableHTML)를 모두 합쳐서 정상적으로 반환합니다!
     return contentHTML + tableHTML + `</tbody></table></div>`;
 }
 
