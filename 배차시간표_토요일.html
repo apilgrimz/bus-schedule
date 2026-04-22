@@ -342,13 +342,18 @@ function importData(input) {
     reader.readAsText(file);
 }
 
-// [인쇄 및 사진용 HTML 생성]
+// =========================================================
+// [핵심] 인쇄 및 사진용 HTML 생성 (요청하신 정확한 텍스트 반영)
+// =========================================================
 function getScheduleHTML(target) {
-    const exportTitle = `${busNum}번 ${displayTitle} 배차 시간표`;
+    // 1. 요청하신 1줄 제목 포맷: "101번 배차 시간표(평일)"
+    const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
+    
+    // 2. 요청하신 2줄 부제목 포맷: "오전 | 운행대수: 16대" (나머지 텍스트 완전 삭제)
     let subtitleText = '';
-    if (target === 'am') subtitleText = `[ 오전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else if (target === 'pm') subtitleText = `[ 오후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else subtitleText = `운행대수: ${busCount}대`;
+    if (target === 'am') subtitleText = `오전 &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+    else if (target === 'pm') subtitleText = `오후 &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+    else subtitleText = `운행대수: ${busCount}대`; // 통합의 경우
 
     let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:32px; color:#000; font-weight:900;">${exportTitle}</h2>`;
     contentHTML += `<div style="text-align:right; margin-bottom:10px; font-size:18px; font-weight:bold; color:#333;">${subtitleText}</div>`;
@@ -429,6 +434,8 @@ async function captureAndShare(target) {
 
 function triggerPrint() {
     if (currentView === 'input') { window.print(); return; }
+    
+    // 인쇄 모드 시작
     document.body.classList.add('custom-printing');
     let pc = document.getElementById('print-container');
     pc.innerHTML = '';
@@ -437,13 +444,25 @@ function triggerPrint() {
         const p = document.createElement('div'); p.className = 'custom-print-page';
         p.innerHTML = getScheduleHTML('integrated'); pc.appendChild(p);
     } else {
+        // 분리 인쇄: 오전 페이지 추가
         const p1 = document.createElement('div'); p1.className = 'custom-print-page';
         p1.innerHTML = getScheduleHTML('am'); pc.appendChild(p1);
+        
+        // 분리 인쇄: 오후 페이지 추가
         const p2 = document.createElement('div'); p2.className = 'custom-print-page';
         p2.innerHTML = getScheduleHTML('pm'); pc.appendChild(p2);
     }
-    setTimeout(() => { window.print(); document.body.classList.remove('custom-printing'); }, 300);
+    
+    // 약간의 딜레이 후 브라우저 인쇄 호출 (버그 픽스 구역)
+    setTimeout(() => { 
+        window.print(); 
+    }, 100);
 }
+
+// [중요 버그 수정] 인쇄 대화상자가 완전히 닫힌 후(취소 또는 완료)에만 원래 화면으로 복귀합니다.
+window.addEventListener('afterprint', () => {
+    document.body.classList.remove('custom-printing');
+});
 
 loadData(); schedule=compute(); render();
 </script>
