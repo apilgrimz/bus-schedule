@@ -36,44 +36,22 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 /* =========================================
    [앱 화면 & 인쇄 공통 테이블 디자인] 
    ========================================= */
-table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; }
-th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:2px; font-size:10px; text-align:center; position:sticky; top:0; z-index:10; }
-td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px; }
-
+table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
+th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:2px; font-size:10px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
 th.fix-col { left: 0; z-index: 12; border-right: 1px solid #9ca3af !important; }
 td.seq { font-weight:bold; background:#f8fafc !important; width:28px; position: sticky; left: 0; z-index: 5; border-right: 1px solid #9ca3af !important; }
-td.rest-bad { background:#fee2e2; color:#b91c1c; }
+td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
+td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 td.dep, td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 td.dep-s { color:#dc2626; font-weight:bold; }
 td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 0; line-height: 1.1; }
 
-/* [핵심] 순번 구분선 및 맨 아랫줄 연회색(#9ca3af) 1px 콤보 적용 */
-table th { border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
-table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
-table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
-
-/* =========================================
-   [사진 & 인쇄 전용 전역 고정 CSS] 
-   브라우저가 잉크 아낀다고 선을 날려버리는 현상 원천 차단!
-   ========================================= */
-.export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
-.export-wrapper * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-.export-container { height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
-
-.export-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; }
-.export-table th { position: static !important; background:#e2e8f0 !important; border:1px solid #cbd5e1; text-align:center; font-weight:800; color:#0f172a; height: var(--th-height); font-size: var(--th-fs); }
-.export-table td { position: static !important; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; padding:0; line-height:1; overflow:hidden; white-space:nowrap; height: var(--cell-height); }
-
-.export-table td.seq { position: static !important; font-weight:900; background:#f8fafc !important; color:#0f172a; font-size: var(--fs-seq); border-right: 1px solid #9ca3af !important; }
-.export-table th.fix-col { position: static !important; border-right: 1px solid #9ca3af !important; }
-
-.export-table td.dep { font-weight:900; color:#1d4ed8; font-size: var(--fs-dep); }
-.export-table td.arr { font-weight:900; color:#0f766e; font-size: var(--fs-dep); }
-.export-table td.tt, .export-table td.hj { color:#334155; font-weight:900; font-size: var(--fs-sub); }
-.export-table td.dep-s { color:#dc2626; background-color:#fef2f2 !important; font-weight:900; }
-.export-table td.s-big { font-size: var(--fs-s-big); }
-.export-table td.s-small { font-size: var(--fs-s-small); }
+/* [핵심] 일반 선(border)과 강제 그림자 선(box-shadow)을 동시에 걸어 인쇄 누락 완벽 차단! */
+table tbody tr.bus-start td { 
+    border-top: 1px solid #9ca3af !important; 
+    box-shadow: inset 0 1px 0 0 #9ca3af !important; 
+}
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
@@ -82,26 +60,15 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
+/* [인쇄 전용 CSS] */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
     body.use-custom-print > *:not(#print-container) { display: none !important; }
     body.use-custom-print #print-container { display: block !important; width: 100%; background: #fff; }
-    
     @page { size: A4 portrait; margin: 0; }
-    
-    .custom-print-page { 
-        width: 100%; 
-        height: 296mm; 
-        padding: 15mm 10mm; 
-        box-sizing: border-box; 
-        page-break-after: always; 
-        break-after: page; 
-        background: #ffffff; 
-        display: flex; 
-        flex-direction: column;
-        overflow: hidden; 
-    }
+    .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
 }
 </style>
@@ -460,7 +427,7 @@ function getActualAmPmTrips() {
 }
 
 // =========================================================
-// [디자인 완성] CSS 변수(Variables)를 통한 전역 연회색 강제 매핑!
+// [핵심 해결] box-shadow와 border의 조합으로 인쇄 시 1px 구분선 절대 보장!
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -500,19 +467,25 @@ function getScheduleHTML(target) {
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
 
-    // 자바스크립트가 DOM에 직접 스타일 변수를 꽂아넣어 브라우저의 스타일 무시 완벽 방어!
-    const styleVars = `
-        --cell-height: ${exactCellHeight}px;
-        --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px;
-        --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px;
-        --fs-seq: ${fsSeq}px;
-        --fs-dep: ${fsDep}px;
-        --fs-sub: ${fsSub}px;
-        --fs-s-big: ${fsDep * 2}px;
-        --fs-s-small: ${fsDep * 1.4}px;
-    `;
-
-    let tableHTML = `<div class="export-wrapper" style="${styleVars}"><div class="export-container" style="width:${tableWidth};">`;
+    let tableHTML = `<style>
+        .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
+        .export-wrapper * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        .table-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
+        .export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
+        .export-wrapper th { position: static !important; background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; font-weight:800; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; color:#0f172a; }
+        .export-wrapper td { position: static !important; border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+        .export-wrapper td.seq { position: static !important; font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:1px solid #9ca3af !important; color:#0f172a; }
+        .export-wrapper td.dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; }
+        .export-wrapper td.arr { font-size:${fsDep}px; font-weight:900; color:#0f766e; } 
+        .export-wrapper td.dep-s { color:#dc2626; }
+        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#334155; font-weight:900; } 
+        
+        /* 브라우저가 지울 수 없는 강제 선 + 그림자 콤보 (연회색 1px) */
+        .export-wrapper tr.bus-start td { 
+            border-top: 1px solid #9ca3af !important; 
+            box-shadow: inset 0 1px 0 0 #9ca3af !important; 
+        }
+    </style><div class="export-wrapper"><div class="table-container">`;
 
     function getExportThead(trips) {
         let h = `<tr><th class="fix-col" style="width:40px">순번</th>`;
@@ -528,7 +501,7 @@ function getScheduleHTML(target) {
             
             if (hasAnyTT) {
                 if (isS) {
-                    r1 += `<td rowspan="3" colspan="2" class="dep-s s-big">S</td>`;
+                    r1 += `<td rowspan="3" colspan="2" class="dep-s" style="font-size:${fsDep * 2}px; font-weight:900; background-color:#fef2f2 !important;">S</td>`;
                 } else {
                     r1 += `<td colspan="2" class="dep">${dep}</td>`;
                     r2 += `<td class="tt">${s&&s.tt?s.tt:''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
@@ -536,7 +509,7 @@ function getScheduleHTML(target) {
                 }
             } else { 
                 if (isS) {
-                    r1 += `<td colspan="2" class="dep-s s-small">S</td>`;
+                    r1 += `<td colspan="2" class="dep-s" style="font-size:${fsDep * 1.4}px; font-weight:900; background-color:#fef2f2 !important;">S</td>`;
                 } else {
                     r1 += `<td colspan="2" class="dep">${dep}</td>`; 
                 }
@@ -552,15 +525,15 @@ function getScheduleHTML(target) {
     const pmTrips = Array.from({length: actualTrips.maxPm}, (_, i) => i + 1);
     
     if (target === 'integrated') {
-        tableHTML += `<table class="export-table">${getExportThead(integratedTrips)}<tbody>`;
+        tableHTML += `<table>${getExportThead(integratedTrips)}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, integratedTrips.map(t=>gs(b,t)));
         tableHTML += `</tbody></table>`;
     } else if (target === 'am') {
-        tableHTML += `<table class="export-table">${getExportThead(amTrips)}<tbody>`;
+        tableHTML += `<table>${getExportThead(amTrips)}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
         tableHTML += `</tbody></table>`;
     } else if (target === 'pm') {
-        tableHTML += `<table class="export-table">${getExportThead(pmTrips)}<tbody>`;
+        tableHTML += `<table>${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
             tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
@@ -568,14 +541,14 @@ function getScheduleHTML(target) {
         tableHTML += `</tbody></table>`;
     } else if (target === 'split') { 
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
-                        <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #94a3b8; font-size:15px; border-radius:4px; color:#1e3a8a; -webkit-print-color-adjust: exact !important;">[ 오 전 ]</div>
-                        <table class="export-table">${getExportThead(amTrips)}<tbody>`;
+                        <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3b8; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; -webkit-print-color-adjust: exact !important;">[ 오 전 ]</div>
+                        <table style="height:100%;">${getExportThead(amTrips)}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
         tableHTML += `</tbody></table></div>`;
         
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
-                        <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #94a3b8; font-size:15px; border-radius:4px; color:#991b1b; -webkit-print-color-adjust: exact !important;">[ 오 후 ]</div>
-                        <table class="export-table">${getExportThead(pmTrips)}<tbody>`;
+                        <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3b8; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#991b1b; -webkit-print-color-adjust: exact !important;">[ 오 후 ]</div>
+                        <table style="height:100%;">${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
             tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
@@ -621,7 +594,6 @@ async function captureAndShare(target) {
 
 function triggerPrint() {
     updatePrintContainer(); 
-    // 브라우저가 화면 구조를 인식하고 인쇄 엔진을 켤 수 있도록 0.5초의 넉넉한 딜레이를 줌
     setTimeout(() => { window.print(); }, 500); 
 }
 
