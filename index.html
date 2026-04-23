@@ -10,20 +10,38 @@
     body { font-family: 'Malgun Gothic', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
     .menu-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; width: 85%; max-width: 400px; }
     h1 { color: #2d3748; font-size: 22px; margin-bottom: 25px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 5px; }
-    .bus-input { width: 60px; font-size: 24px; font-weight: 900; text-align: center; border: none; border-bottom: 2px solid #3182ce; color: #1e3a8a; background: transparent; outline: none; }
     
-    .btn { display: block; padding: 16px; margin-bottom: 12px; background: #3182ce; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s; cursor: pointer; border: none; width: 100%; box-sizing: border-box; }
-    .btn:active { background: #2b6cb0; transform: translateY(2px); }
-    .btn-red { background: #e53e3e !important; }
-    .btn-green { background: #38a169 !important; }
-    .btn-purple { background: #805ad5 !important; }
-    .btn-outline { background: white !important; color: #2b6cb0; border: 2px solid #2b6cb0; margin-bottom: 25px; }
+    .input-wrapper { position: relative; display: inline-block; }
+    .bus-input { width: 120px; font-size: 24px; font-weight: 900; text-align: center; border: none; border-bottom: 2px solid #3182ce; color: #1e3a8a; background: transparent; outline: none; cursor: text; padding-bottom: 2px; }
+    
+    .dropdown { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); background: white; border: 1px solid #cbd5e0; border-radius: 8px; box-shadow: 0 10px 15px rgba(0,0,0,0.15); width: 160px; max-height: 250px; overflow-y: auto; z-index: 100; display: none; flex-direction: column; margin-top: 8px; }
+    .dropdown.show { display: flex; }
+    
+    .dropdown-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; font-size: 16px; color: #4a5568; cursor: pointer; border-bottom: 1px solid #edf2f7; font-weight: bold; transition: 0.2s; }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover { background: #ebf8ff; color: #2b6cb0; }
+    
+    .delete-btn { font-size: 12px; color: #e53e3e; background: #fff5f5; padding: 4px 6px; border-radius: 4px; border: 1px solid #fed7d7; transition: 0.2s; }
+    .delete-btn:hover { background: #feb2b2; color: #c53030; border-color: #fc8181; }
+
+    .btn { display: block; width: 100%; padding: 14px; margin-bottom: 10px; border-radius: 8px; font-size: 16px; font-weight: bold; color: white; background: #3182ce; border: none; cursor: pointer; text-decoration: none; transition: 0.2s; }
+    .btn:hover { background: #2b6cb0; }
+    .btn-green { background: #38a169; } .btn-green:hover { background: #2f855a; }
+    .btn-red { background: #e53e3e; } .btn-red:hover { background: #c53030; }
+    .btn-purple { background: #805ad5; } .btn-purple:hover { background: #6b46c1; }
+    .btn-outline { background: white; color: #4a5568; border: 2px solid #e2e8f0; margin-bottom: 20px; }
+    .btn-outline:hover { background: #f7fafc; }
 </style>
 </head>
 <body>
 
   <div class="menu-box">
-    <h1>🚌 <input type="text" id="busNumInput" class="bus-input" value="101" oninput="saveBusNum()">번 배차 마스터</h1>
+    <h1>🚌 
+      <div class="input-wrapper" id="inputWrapper">
+        <input type="text" id="busNumInput" class="bus-input" value="101" oninput="saveBusNum()" onclick="toggleDropdown()" placeholder="노선입력">
+        <div id="routeDropdown" class="dropdown"></div>
+      </div>
+    번 배차 마스터</h1>
     
     <button onclick="shareApp()" class="btn btn-outline">🔗 앱 공유하기</button>
 
@@ -45,15 +63,98 @@
           localStorage.setItem('busNumber', document.getElementById('busNumInput').value || '101');
       }
 
+      // [핵심] 저장된 노선들을 올림차순으로 정렬하여 가져오는 함수
+      function getSavedRoutes() {
+          let routes = new Set(['101']); 
+          for (let i = 0; i < localStorage.length; i++) {
+              let key = localStorage.key(i);
+              // 일반 저장 패턴(v2)
+              let match = key.match(/^busData_v2_(.+?)_배차시간표_/);
+              if (match) routes.add(match[1]);
+              // 101번 전용 패턴
+              if (key.startsWith('bus101Data_v2_')) routes.add('101');
+          }
+          
+          // [수정] localeCompare를 사용하여 숫자와 문자가 섞여도 자연스럽게 올림차순 정렬
+          return Array.from(routes).sort((a, b) => 
+            a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+          );
+      }
+
+      function toggleDropdown() {
+          const drop = document.getElementById('routeDropdown');
+          const routes = getSavedRoutes();
+          drop.innerHTML = '';
+          
+          routes.forEach(r => {
+              let div = document.createElement('div');
+              div.className = 'dropdown-item';
+              
+              let textSpan = document.createElement('span');
+              textSpan.innerText = r + '번';
+              textSpan.style.flex = "1";
+              textSpan.style.textAlign = "left";
+              textSpan.onclick = function() {
+                  document.getElementById('busNumInput').value = r;
+                  saveBusNum();
+                  hideDropdown();
+              };
+
+              let deleteBtn = document.createElement('span');
+              deleteBtn.className = 'delete-btn';
+              deleteBtn.innerText = '❌';
+              deleteBtn.onclick = function(event) {
+                  event.stopPropagation();
+                  deleteRoute(r);
+              };
+
+              div.appendChild(textSpan);
+              if (r !== '101') div.appendChild(deleteBtn);
+              
+              drop.appendChild(div);
+          });
+          
+          drop.classList.toggle('show');
+      }
+
+      function deleteRoute(routeNum) {
+          if (confirm(`[ ${routeNum}번 ] 노선의 모든 데이터를 삭제하시겠습니까?`)) {
+              let keysToDelete = [];
+              for (let i = 0; i < localStorage.length; i++) {
+                  let key = localStorage.key(i);
+                  if (key.startsWith(`busData_v2_${routeNum}_`)) keysToDelete.push(key);
+              }
+              keysToDelete.forEach(k => localStorage.removeItem(k));
+              
+              if (document.getElementById('busNumInput').value === routeNum) {
+                  document.getElementById('busNumInput').value = '101';
+                  saveBusNum();
+              }
+              alert('삭제되었습니다.');
+              toggleDropdown(); // 목록 갱신
+          }
+      }
+
+      function hideDropdown() {
+          document.getElementById('routeDropdown').classList.remove('show');
+      }
+
+      document.addEventListener('click', function(event) {
+          const wrapper = document.getElementById('inputWrapper');
+          if (!wrapper.contains(event.target)) {
+              hideDropdown();
+          }
+      });
+
       function shareApp() {
           if (navigator.share) {
               navigator.share({
                   title: '버스 배차 마스터',
-                  text: '버스 배차 시간표 앱입니다. 아래 링크를 눌러 확인하세요.',
+                  text: '배차 관리 앱을 공유합니다.',
                   url: window.location.href
-              }).catch(console.error);
+              }).catch(()=>{});
           } else {
-              alert('현재 브라우저에서는 공유 기능을 지원하지 않습니다. URL을 복사해주세요.');
+              alert('URL을 직접 복사해주세요.');
           }
       }
   </script>

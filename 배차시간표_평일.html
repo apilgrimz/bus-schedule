@@ -31,7 +31,7 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 
 .infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
 .infobar b { font-weight:bold }
-.content { flex:1; overflow-y:auto; background:#f5f5f5; padding-bottom: 40px; }
+.content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
 
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; }
 th { background:#dbeafe; border:1px solid #9ca3af; padding:2px; font-size:10px; text-align:center; position:sticky; top:0; z-index:10 }
@@ -106,6 +106,7 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
     <div class="modal-row"><label>운행대수</label><div><input id="s-bc" type="number">대</div></div>
     <div class="modal-row"><label>회차지비율</label><input id="s-rt" type="text" style="width:80px"></div>
     <div class="modal-row"><label>오후시작</label><div><input id="s-pt" type="number" style="width:45px">회<input id="s-pb" type="number" style="width:45px">번</div></div>
+    <div class="modal-row"><label style="color:#2563eb;">총운행횟수</label><div><input id="s-mt" type="number" style="width:45px">회</div></div>
     
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:15px;">
         <p style="font-size:11px; color:#666; margin-bottom:10px; text-align:left;">⚠️ 업데이트 전 데이터를 백업하세요.</p>
@@ -137,11 +138,15 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
-const STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
 let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
 
 const busNum = localStorage.getItem('busNumber') || '101';
 document.getElementById('appTitle').innerText = `${busNum}번 ${displayTitle}`;
+
+let STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
+if (busNum !== '101') {
+    STORAGE_KEY = 'busData_v2_' + busNum + '_' + decodeURIComponent(fileName);
+}
 
 window.addEventListener('DOMContentLoaded', () => {
     const navLinks = {
@@ -154,7 +159,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (activeId) document.getElementById(activeId).classList.add('active');
 });
 
-let busCount=16, ratio=0.525, pmTrip=3, pmBus=4, currentView='integrated';
+let busCount=16, ratio=0.525, pmTrip=3, pmBus=4, maxTrip=6, currentView='integrated';
 const deps={}, tts={};
 
 function loadData() {
@@ -165,17 +170,18 @@ function loadData() {
         ratio = parsed.ratio || 0.525;
         pmTrip = parsed.pmTrip || 3;
         pmBus = parsed.pmBus || 4;
+        maxTrip = parsed.maxTrip || 6; 
         Object.assign(deps, parsed.deps || {});
         Object.assign(tts, parsed.tts || {});
     }
 }
 
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, deps, tts })); }
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, maxTrip, deps, tts })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 function fmt(m,h24){if(m==null)return'—'; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
 function compute(){
-  const N=busCount, tot=N*6, seq=[];
+  const N=busCount, tot=N*maxTrip, seq=[]; 
   for(let d=1;d<=tot;d++){
     const trip=Math.floor((d-1)/N)+1, bus=((d-1)%N)+1;
     const raw=deps[`${bus}-${trip}`];
@@ -292,30 +298,42 @@ function thead(trips){
 }
 
 function renderIntegrated(el){
-    let h=`<div style="padding:8px"><table>${thead([1,2,3,4,5,6])}<tbody>`;
-    for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3,4,5,6].map(t=>gs(b,t)));
+    const trips = Array.from({length: maxTrip}, (_, i) => i + 1);
+    let h=`<div style="padding:8px; overflow-x:auto;"><table style="min-width:${Math.max(100, maxTrip * 12)}%">${thead(trips)}<tbody>`;
+    for(let b=1;b<=busCount;b++) h+=busRows(b, trips.map(t=>gs(b,t)));
     el.innerHTML=h+'</tbody></table></div>';
 }
 
 function renderSplit(el){
     const splitD=(pmTrip-1)*busCount+pmBus;
-    let h='<div class="split-grid"><div class="split-item"><div class="section-title section-am">오전</div><table>'+thead([1,2,3])+'<tbody>';
-    for(let b=1;b<=busCount;b++) h+=busRows(b,[1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
-    h+='</tbody></table></div><div class="split-item"><div class="section-title section-pm">오후 ('+pmTrip+'회'+pmBus+'번~)</div><table>'+thead([1,2,3])+'<tbody>';
+    const amTrips = Array.from({length: pmTrip}, (_, i) => i + 1);
+    const pmLen = Math.max(1, maxTrip - pmTrip + 1);
+    const pmTrips = Array.from({length: pmLen}, (_, i) => i + 1);
+
+    let h=`<div class="split-grid" style="display:flex; flex-direction:column; gap:15px; padding:8px;">
+             <div class="split-item" style="overflow-x:auto;">
+               <div class="section-title section-am" style="font-weight:bold; color:#1e40af; margin-bottom:4px;">오전</div>
+               <table style="min-width:${Math.max(100, amTrips.length * 15)}%">${thead(amTrips)}<tbody>`;
+    for(let b=1;b<=busCount;b++) h+=busRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+    h+=`</tbody></table></div>
+        <div class="split-item" style="overflow-x:auto;">
+          <div class="section-title section-pm" style="font-weight:bold; color:#991b1b; margin-bottom:4px;">오후 (${pmTrip}회${pmBus}번~)</div>
+          <table style="min-width:${Math.max(100, pmTrips.length * 15)}%">${thead(pmTrips)}<tbody>`;
     for(let p=0;p<busCount;p++){
         const b=((pmBus-1+p)%busCount)+1;
-        h+=busRows(b,[1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
+        h+=busRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
     }
     el.innerHTML=h+'</tbody></table></div></div>';
 }
 
 function renderInput(el){
-    let h='<div style="padding:8px"><table class="input-table"><thead><tr><th style="width:24px">번</th>';
-    for(let t=1;t<=6;t++) h+=`<th>${t}출발</th><th style="width:36px">운행</th>`;
+    const trips = Array.from({length: maxTrip}, (_, i) => i + 1);
+    let h=`<div style="padding:8px; overflow-x:auto;"><table class="input-table" style="min-width:${Math.max(100, maxTrip * 18)}%"><thead><tr><th style="width:24px">번</th>`;
+    for(let t of trips) h+=`<th>${t}출발</th><th style="width:36px">운행</th>`;
     h+='</tr></thead><tbody>';
     for(let b=1;b<=busCount;b++){
         h+=`<tr><td style="font-weight:bold;background:#f8fafc;">${b}</td>`;
-        for(let t=1;t<=6;t++){
+        for(let t of trips){
             const dk=`${b}-${t}`, dv=deps[dk]||'', tv=tts[dk]||'';
             h+=`<td><input class="${dv.toUpperCase()==='S'?'s-val':''}" value="${dv}" data-type="dep" data-bus="${b}" data-trip="${t}" onblur="onInput(this)"></td>`;
             h+=`<td><input value="${tv}" data-type="tt" data-bus="${b}" data-trip="${t}" onblur="onInput(this)"></td>`;
@@ -338,14 +356,20 @@ function switchView(v){
 }
 
 function openSettings(){
-    document.getElementById('s-bc').value=busCount; document.getElementById('s-rt').value=ratio;
-    document.getElementById('s-pt').value=pmTrip; document.getElementById('s-pb').value=pmBus;
+    document.getElementById('s-bc').value=busCount; 
+    document.getElementById('s-rt').value=ratio;
+    document.getElementById('s-pt').value=pmTrip; 
+    document.getElementById('s-pb').value=pmBus;
+    document.getElementById('s-mt').value=maxTrip; 
     document.getElementById('modal-bg').classList.remove('hidden');
 }
 function closeSettings(){document.getElementById('modal-bg').classList.add('hidden');}
 function applySettings(){
-    busCount=Number(document.getElementById('s-bc').value); ratio=Number(document.getElementById('s-rt').value);
-    pmTrip=Number(document.getElementById('s-pt').value); pmBus=Number(document.getElementById('s-pb').value);
+    busCount=Number(document.getElementById('s-bc').value); 
+    ratio=Number(document.getElementById('s-rt').value);
+    pmTrip=Number(document.getElementById('s-pt').value); 
+    pmBus=Number(document.getElementById('s-pb').value);
+    maxTrip=Number(document.getElementById('s-mt').value) || 6; 
     closeSettings(); saveData(); schedule=compute(); render();
 }
 
@@ -359,7 +383,7 @@ function exportData() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `백업_${displayTitle}_${new Date().toLocaleDateString()}.json`;
+    a.download = `백업_${busNum}번_${displayTitle}_${new Date().toLocaleDateString()}.json`; 
     a.click();
 }
 
@@ -378,8 +402,19 @@ function importData(input) {
     reader.readAsText(file);
 }
 
+function getActualMaxTrip() {
+    let maxT = 1;
+    for (let key in deps) {
+        if (deps[key] && String(deps[key]).trim() !== '') { maxT = Math.max(maxT, parseInt(key.split('-')[1])); }
+    }
+    for (let key in tts) {
+        if (tts[key] && String(tts[key]).trim() !== '') { maxT = Math.max(maxT, parseInt(key.split('-')[1])); }
+    }
+    return Math.min(maxTrip, maxT); 
+}
+
 // =========================================================
-// [수정 사항] 운행시간이 없을 때의 'S' 폰트 크기 명확히 지정! (fsDep * 1.4 적용)
+// [핵심 변경] 디자인 최적화 (도착시각 크기/색상 및 운행시간 폰트 강화)
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -398,19 +433,25 @@ function getScheduleHTML(target) {
 
     const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
     
+    const exportMaxTrip = getActualMaxTrip();
+    const fontScale = exportMaxTrip > 6 ? Math.max(0.65, 6 / exportMaxTrip) : 1;
+    
     let fsSeq, fsDep, fsSub;
     if (hasAnyTT) {
-        fsSeq = exactCellHeight * 0.6;
-        fsDep = exactCellHeight * 0.75;
-        fsSub = exactCellHeight * 0.55;
+        fsSeq = (exactCellHeight * 0.6) * fontScale;
+        fsDep = (exactCellHeight * 0.75) * fontScale;
+        // [변경] 운행시간(tt)과 회차지시간(hj) 폰트를 기존 0.55배에서 0.65배로 확실히 키움
+        fsSub = (exactCellHeight * 0.65) * fontScale; 
     } else {
-        fsSeq = Math.min(16, exactCellHeight * 0.5);  
-        fsDep = Math.min(20, exactCellHeight * 0.6);  
-        fsSub = 12;  
+        fsSeq = Math.min(16, exactCellHeight * 0.5) * fontScale;  
+        fsDep = Math.min(20, exactCellHeight * 0.6) * fontScale;  
+        fsSub = 14 * fontScale;  
     }
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
 
+    // [변경] 도착시각(.arr) 글자크기를 출발(.dep)과 100% 동일하게 맞추고 색상을 진청록(#0f766e)으로! 
+    // [변경] 운행/회차시간(.tt, .hj) 글씨를 아주 두껍게(900) 만들고 색상을 조금 더 진하게(#334155) 변경
     let tableHTML = `<style>
         .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; }
         .table-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; gap:15px; } 
@@ -419,9 +460,9 @@ function getScheduleHTML(target) {
         .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:2px solid #94a3b8; }
         .export-wrapper td.dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; }
-        .export-wrapper td.arr { font-size:${fsDep*0.9}px; font-weight:900; color:#1d4ed8; }
+        .export-wrapper td.arr { font-size:${fsDep}px; font-weight:900; color:#0f766e; } /* 0.9배 삭제, 진청록색 적용 */
         .export-wrapper td.dep-s { color:#dc2626; }
-        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#64748b; font-weight:bold; }
+        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#334155; font-weight:900; } /* 진한 회색, 두껍게 */
     </style><div class="export-wrapper"><div class="table-container">`;
 
     function getExportThead(trips) {
@@ -446,7 +487,6 @@ function getScheduleHTML(target) {
                 }
             } else { 
                 if (isS) {
-                    // [핵심] 운행시간이 없을 때의 S 글자 크기를 일반 출발시간 글자(fsDep)의 1.4배로 명확히 고정합니다!
                     r1 += `<td colspan="2" class="dep-s" style="font-size:${fsDep * 1.4}px; font-weight:900; background-color:#fef2f2;">S</td>`;
                 } else {
                     r1 += `<td colspan="2" class="dep">${dep}</td>`; 
@@ -458,34 +498,39 @@ function getScheduleHTML(target) {
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
     
+    const integratedTrips = Array.from({length: exportMaxTrip}, (_, i) => i + 1);
+    const amTrips = Array.from({length: Math.min(pmTrip, exportMaxTrip)}, (_, i) => i + 1);
+    const pmLen = Math.max(1, exportMaxTrip - pmTrip + 1);
+    const pmTrips = Array.from({length: pmLen}, (_, i) => i + 1);
+    
     if (target === 'integrated') {
-        tableHTML += `<table>${getExportThead([1,2,3,4,5,6])}<tbody>`;
-        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, [1,2,3,4,5,6].map(t=>gs(b,t)));
+        tableHTML += `<table>${getExportThead(integratedTrips)}<tbody>`;
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, integratedTrips.map(t=>gs(b,t)));
         tableHTML += `</tbody></table>`;
     } else if (target === 'am') {
-        tableHTML += `<table>${getExportThead([1,2,3])}<tbody>`;
-        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, [1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+        tableHTML += `<table>${getExportThead(amTrips)}<tbody>`;
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
         tableHTML += `</tbody></table>`;
     } else if (target === 'pm') {
-        tableHTML += `<table>${getExportThead([1,2,3])}<tbody>`;
+        tableHTML += `<table>${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
-            tableHTML += getExportBusRows(b, [1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
+            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=exportMaxTrip?gs(b,at):null;}));
         }
         tableHTML += `</tbody></table>`;
     } else if (target === 'split') { 
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column;">
                         <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #94a3b8; font-size:15px; border-radius:4px; color:#1e3a8a;">[ 오 전 ]</div>
-                        <table style="height:100%;">${getExportThead([1,2,3])}<tbody>`;
-        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, [1,2,3].map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+                        <table style="height:100%;">${getExportThead(amTrips)}<tbody>`;
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
         tableHTML += `</tbody></table></div>`;
         
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column;">
                         <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #94a3b8; font-size:15px; border-radius:4px; color:#991b1b;">[ 오 후 ]</div>
-                        <table style="height:100%;">${getExportThead([1,2,3])}<tbody>`;
+                        <table style="height:100%;">${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
-            tableHTML += getExportBusRows(b, [1,2,3].map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=6?gs(b,at):null;}));
+            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=exportMaxTrip?gs(b,at):null;}));
         }
         tableHTML += `</tbody></table></div>`;
     }
@@ -499,10 +544,18 @@ async function captureAndShare(target) {
     loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px;">이미지 생성 중...</div>';
     document.body.appendChild(loading);
 
+    const actualMax = getActualMaxTrip();
+    const reqWidth = Math.max(794, actualMax * 120);
+
     const exportDiv = document.createElement('div');
-    exportDiv.style.width = '794px'; exportDiv.style.height = '1123px'; exportDiv.style.padding = '40px 30px';
-    exportDiv.style.backgroundColor = '#fff'; exportDiv.style.position = 'absolute'; exportDiv.style.left = '-9999px';
-    exportDiv.style.display = 'flex'; exportDiv.style.flexDirection = 'column';
+    exportDiv.style.width = `${reqWidth}px`; 
+    exportDiv.style.height = '1123px'; 
+    exportDiv.style.padding = '40px 30px';
+    exportDiv.style.backgroundColor = '#fff'; 
+    exportDiv.style.position = 'absolute'; 
+    exportDiv.style.left = '-9999px';
+    exportDiv.style.display = 'flex'; 
+    exportDiv.style.flexDirection = 'column';
     exportDiv.innerHTML = getScheduleHTML(target);
     document.body.appendChild(exportDiv);
 
