@@ -50,7 +50,7 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* [그림자 인쇄 시스템 CSS - 1장 고정] */
+/* [그림자 인쇄 시스템 CSS] */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -178,7 +178,9 @@ function loadData() {
 
 function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, maxTrip, deps, tts })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
-function fmt(m,h24){if(m==null)return'—'; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
+
+// [핵심 변경 1] 빈칸 대시(—) 제거! 데이터가 없으면 완전히 빈 공간으로 둡니다.
+function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
 function compute(){
   const N=busCount, tot=N*maxTrip, seq=[]; 
@@ -402,20 +404,33 @@ function importData(input) {
     reader.readAsText(file);
 }
 
-function getActualMaxTrip() {
-    let maxT = 1;
-    for (let key in deps) {
-        if (deps[key] && String(deps[key]).trim() !== '') { maxT = Math.max(maxT, parseInt(key.split('-')[1])); }
-    }
-    for (let key in tts) {
-        if (tts[key] && String(tts[key]).trim() !== '') { maxT = Math.max(maxT, parseInt(key.split('-')[1])); }
-    }
-    return Math.min(maxTrip, maxT); 
+// [핵심 변경 2] 오전/오후 각각의 실제 필요 길이를 독립적으로 계산합니다!
+function getActualAmPmTrips() {
+    let maxInt = 1, maxAm = 1, maxPm = 1;
+    const splitD = (pmTrip - 1) * busCount + pmBus;
+    
+    const checkKey = (k) => {
+        let [b, t] = k.split('-').map(Number);
+        maxInt = Math.max(maxInt, t);
+        let D = (t - 1) * busCount + b;
+        if (D < splitD) {
+            maxAm = Math.max(maxAm, t);
+        } else {
+            let dt = (b >= pmBus) ? (t - pmTrip + 1) : (t - pmTrip);
+            maxPm = Math.max(maxPm, dt);
+        }
+    };
+
+    for (let k in deps) { if (deps[k] && String(deps[k]).trim() !== '') checkKey(k); }
+    for (let k in tts) { if (tts[k] && String(tts[k]).trim() !== '') checkKey(k); }
+    
+    return { 
+        maxInt: Math.min(maxTrip, maxInt), 
+        maxAm: Math.min(maxTrip, maxAm), 
+        maxPm: Math.min(maxTrip, maxPm) 
+    };
 }
 
-// =========================================================
-// [핵심 변경] 디자인 최적화 (도착시각 크기/색상 및 운행시간 폰트 강화)
-// =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
     
@@ -433,14 +448,18 @@ function getScheduleHTML(target) {
 
     const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
     
-    const exportMaxTrip = getActualMaxTrip();
-    const fontScale = exportMaxTrip > 6 ? Math.max(0.65, 6 / exportMaxTrip) : 1;
+    const actualTrips = getActualAmPmTrips();
+    let targetMax = actualTrips.maxInt;
+    if (target === 'am') targetMax = actualTrips.maxAm;
+    else if (target === 'pm') targetMax = actualTrips.maxPm;
+    else if (target === 'split') targetMax = Math.max(actualTrips.maxAm, actualTrips.maxPm);
+
+    const fontScale = targetMax > 6 ? Math.max(0.65, 6 / targetMax) : 1;
     
     let fsSeq, fsDep, fsSub;
     if (hasAnyTT) {
         fsSeq = (exactCellHeight * 0.6) * fontScale;
         fsDep = (exactCellHeight * 0.75) * fontScale;
-        // [변경] 운행시간(tt)과 회차지시간(hj) 폰트를 기존 0.55배에서 0.65배로 확실히 키움
         fsSub = (exactCellHeight * 0.65) * fontScale; 
     } else {
         fsSeq = Math.min(16, exactCellHeight * 0.5) * fontScale;  
@@ -450,8 +469,6 @@ function getScheduleHTML(target) {
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
 
-    // [변경] 도착시각(.arr) 글자크기를 출발(.dep)과 100% 동일하게 맞추고 색상을 진청록(#0f766e)으로! 
-    // [변경] 운행/회차시간(.tt, .hj) 글씨를 아주 두껍게(900) 만들고 색상을 조금 더 진하게(#334155) 변경
     let tableHTML = `<style>
         .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; }
         .table-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; gap:15px; } 
@@ -460,9 +477,9 @@ function getScheduleHTML(target) {
         .export-wrapper td { border:1px solid #cbd5e0; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         .export-wrapper td.seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:2px solid #94a3b8; }
         .export-wrapper td.dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; }
-        .export-wrapper td.arr { font-size:${fsDep}px; font-weight:900; color:#0f766e; } /* 0.9배 삭제, 진청록색 적용 */
+        .export-wrapper td.arr { font-size:${fsDep}px; font-weight:900; color:#0f766e; } 
         .export-wrapper td.dep-s { color:#dc2626; }
-        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#334155; font-weight:900; } /* 진한 회색, 두껍게 */
+        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#334155; font-weight:900; } 
     </style><div class="export-wrapper"><div class="table-container">`;
 
     function getExportThead(trips) {
@@ -498,10 +515,9 @@ function getScheduleHTML(target) {
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
     
-    const integratedTrips = Array.from({length: exportMaxTrip}, (_, i) => i + 1);
-    const amTrips = Array.from({length: Math.min(pmTrip, exportMaxTrip)}, (_, i) => i + 1);
-    const pmLen = Math.max(1, exportMaxTrip - pmTrip + 1);
-    const pmTrips = Array.from({length: pmLen}, (_, i) => i + 1);
+    const integratedTrips = Array.from({length: actualTrips.maxInt}, (_, i) => i + 1);
+    const amTrips = Array.from({length: actualTrips.maxAm}, (_, i) => i + 1);
+    const pmTrips = Array.from({length: actualTrips.maxPm}, (_, i) => i + 1);
     
     if (target === 'integrated') {
         tableHTML += `<table>${getExportThead(integratedTrips)}<tbody>`;
@@ -515,7 +531,7 @@ function getScheduleHTML(target) {
         tableHTML += `<table>${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
-            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=exportMaxTrip?gs(b,at):null;}));
+            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
         }
         tableHTML += `</tbody></table>`;
     } else if (target === 'split') { 
@@ -530,7 +546,7 @@ function getScheduleHTML(target) {
                         <table style="height:100%;">${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
-            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=exportMaxTrip?gs(b,at):null;}));
+            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
         }
         tableHTML += `</tbody></table></div>`;
     }
@@ -544,8 +560,12 @@ async function captureAndShare(target) {
     loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px;">이미지 생성 중...</div>';
     document.body.appendChild(loading);
 
-    const actualMax = getActualMaxTrip();
-    const reqWidth = Math.max(794, actualMax * 120);
+    const actualTrips = getActualAmPmTrips();
+    let targetMax = actualTrips.maxInt;
+    if (target === 'am') targetMax = actualTrips.maxAm;
+    else if (target === 'pm') targetMax = actualTrips.maxPm;
+
+    const reqWidth = Math.max(794, targetMax * 120);
 
     const exportDiv = document.createElement('div');
     exportDiv.style.width = `${reqWidth}px`; 
