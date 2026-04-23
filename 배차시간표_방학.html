@@ -35,8 +35,12 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; }
 th { background:#dbeafe; border:1px solid #9ca3af; padding:2px; font-size:10px; text-align:center; position:sticky; top:0; z-index:10 }
+
+/* [핵심 추가] 순번 열(틀 고정) CSS 설정 */
+th.fix-col { left: 0; z-index: 12; border-right: 2px solid #9ca3af; }
+td.seq { font-weight:bold; background:#f8fafc; width:28px; position: sticky; left: 0; z-index: 5; border-right: 2px solid #9ca3af; }
+
 td { border:1px solid #d1d5db; text-align:center; padding:1px; font-size:11px }
-td.seq { font-weight:bold; background:#f8fafc; width:28px }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 td.dep, td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
@@ -291,8 +295,9 @@ function busRows(bus,slots){
     return `<tr>${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>`;
 }
 
+// [틀 고정 클래스 추가] th 렌더링 함수에 class="fix-col" 적용
 function thead(trips){
-    let h='<tr><th style="width:28px">순번</th>';
+    let h='<tr><th class="fix-col" style="width:28px">순번</th>';
     trips.forEach((t,i)=>{ h+=`<th colspan="2">${t}회</th>`; if(i<trips.length-1) h+=`<th style="width:28px">휴식</th>`; });
     return `<thead>${h}</tr></thead>`;
 }
@@ -328,11 +333,13 @@ function renderSplit(el){
 
 function renderInput(el){
     const trips = Array.from({length: maxTrip}, (_, i) => i + 1);
-    let h=`<div style="padding:8px; overflow-x:auto;"><table class="input-table" style="min-width:${Math.max(100, maxTrip * 18)}%"><thead><tr><th style="width:24px">번</th>`;
+    // [틀 고정 클래스 추가] th.fix-col 적용
+    let h=`<div style="padding:8px; overflow-x:auto;"><table class="input-table" style="min-width:${Math.max(100, maxTrip * 18)}%"><thead><tr><th class="fix-col" style="width:24px">번</th>`;
     for(let t of trips) h+=`<th>${t}출발</th><th style="width:36px">운행</th>`;
     h+='</tr></thead><tbody>';
     for(let b=1;b<=busCount;b++){
-        h+=`<tr><td style="font-weight:bold;background:#f8fafc;">${b}</td>`;
+        // [틀 고정 클래스 추가] 첫 번째 td에 class="seq" 적용
+        h+=`<tr><td class="seq">${b}</td>`;
         for(let t of trips){
             const dk=`${b}-${t}`, dv=deps[dk]||'', tv=tts[dk]||'';
             h+=`<td><input class="${dv.toUpperCase()==='S'?'s-val':''}" value="${dv}" data-type="dep" data-bus="${b}" data-trip="${t}" onblur="onInput(this)"></td>`;
@@ -588,9 +595,6 @@ function triggerPrint() {
     window.print(); 
 }
 
-// =========================================================
-// [핵심 추가] 노트북 작업자를 위한 엑셀 방식 키보드(방향키/엔터) 이동 로직
-// =========================================================
 document.addEventListener('keydown', function(e) {
     if (currentView !== 'input') return;
     const target = e.target;
@@ -629,7 +633,7 @@ document.addEventListener('keydown', function(e) {
 
     if (nextInput) {
         nextInput.focus();
-        nextInput.select(); // 엑셀처럼 텍스트 전체 선택되어 바로 덮어쓰기 가능
+        nextInput.select(); 
     }
 });
 
