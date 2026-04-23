@@ -429,7 +429,7 @@ function getActualAmPmTrips() {
 }
 
 // =========================================================
-// [핵심 변경] 사진/인쇄 시 쏠림 방지 속성 추가 & 구분 굵은 선 추가
+// [변경] 두꺼웠던 2px 구분선을 얇고 아주 짙은 1px로 변경하여 깔끔함 강조
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -469,21 +469,19 @@ function getScheduleHTML(target) {
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
 
-    // [중요 적용] 
-    // 1. th, td.seq 에 position: static !important 를 추가하여 사진 쏠림 현상 방지!
-    // 2. tr.bus-start 에 굵은 위쪽 테두리를 주어 순번 구분 명확화!
+    // [변경] border 두께를 1px로 줄이고, 색상을 짙은 흑회색(#1e293b)으로 변경하여 세련미 유지
     let tableHTML = `<style>
         .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; }
         .table-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; gap:15px; } 
-        .export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-bottom: 2px solid #475569; }
-        .export-wrapper th { position: static !important; background:#e2e8f0 !important; border:1px solid #94a3b8; border-top: 2px solid #475569; border-bottom: 2px solid #475569; text-align:center; font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; font-weight:800; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; }
+        .export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #1e293b; }
+        .export-wrapper th { position: static !important; background:#e2e8f0 !important; border:1px solid #94a3b8; border-top: 1px solid #1e293b; border-bottom: 1px solid #1e293b; text-align:center; font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; font-weight:800; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; }
         .export-wrapper td { position: static !important; border:1px solid #cbd5e0; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
-        .export-wrapper td.seq { position: static !important; font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:2px solid #94a3b8; }
+        .export-wrapper td.seq { position: static !important; font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:1px solid #1e293b; }
         .export-wrapper td.dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; }
         .export-wrapper td.arr { font-size:${fsDep}px; font-weight:900; color:#0f766e; } 
         .export-wrapper td.dep-s { color:#dc2626; }
         .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#334155; font-weight:900; } 
-        .export-wrapper tr.bus-start td { border-top: 2px solid #475569 !important; }
+        .export-wrapper tr.bus-start td { border-top: 1px solid #1e293b !important; }
     </style><div class="export-wrapper"><div class="table-container">`;
 
     function getExportThead(trips) {
@@ -492,7 +490,6 @@ function getScheduleHTML(target) {
         return `<thead>${h}</tr></thead>`;
     }
 
-    // [중요 적용] <tr> 태그에 class="bus-start" 추가하여 굵은 구분선이 물리게 처리
     function getExportBusRows(bus, slots) {
         let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="seq">${bus}</td>`, r2 = '', r3 = '';
         slots.forEach(s => {
