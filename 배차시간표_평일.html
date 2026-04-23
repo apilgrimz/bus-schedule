@@ -178,8 +178,6 @@ function loadData() {
 
 function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, maxTrip, deps, tts })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
-
-// [핵심 변경 1] 빈칸 대시(—) 제거! 데이터가 없으면 완전히 빈 공간으로 둡니다.
 function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
 function compute(){
@@ -404,7 +402,6 @@ function importData(input) {
     reader.readAsText(file);
 }
 
-// [핵심 변경 2] 오전/오후 각각의 실제 필요 길이를 독립적으로 계산합니다!
 function getActualAmPmTrips() {
     let maxInt = 1, maxAm = 1, maxPm = 1;
     const splitD = (pmTrip - 1) * busCount + pmBus;
@@ -590,6 +587,51 @@ async function captureAndShare(target) {
 function triggerPrint() {
     window.print(); 
 }
+
+// =========================================================
+// [핵심 추가] 노트북 작업자를 위한 엑셀 방식 키보드(방향키/엔터) 이동 로직
+// =========================================================
+document.addEventListener('keydown', function(e) {
+    if (currentView !== 'input') return;
+    const target = e.target;
+    if (target.tagName !== 'INPUT' || !target.closest('.input-table')) return;
+
+    const td = target.closest('td');
+    const tr = target.closest('tr');
+    if (!td || !tr) return;
+
+    const cellIndex = Array.from(tr.children).indexOf(td);
+    let nextInput = null;
+
+    if (e.key === 'ArrowUp') {
+        e.preventDefault(); 
+        const prevTr = tr.previousElementSibling;
+        if (prevTr) nextInput = prevTr.children[cellIndex]?.querySelector('input');
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        e.preventDefault();
+        const nextTr = tr.nextElementSibling;
+        if (nextTr) nextInput = nextTr.children[cellIndex]?.querySelector('input');
+    } else if (e.key === 'ArrowLeft') {
+        if (target.selectionStart === 0 && target.selectionEnd === 0) {
+            e.preventDefault();
+            let prevTd = td.previousElementSibling;
+            while (prevTd && !prevTd.querySelector('input')) prevTd = prevTd.previousElementSibling;
+            if (prevTd) nextInput = prevTd.querySelector('input');
+        }
+    } else if (e.key === 'ArrowRight') {
+        if (target.selectionStart === target.value.length && target.selectionEnd === target.value.length) {
+            e.preventDefault();
+            let nextTd = td.nextElementSibling;
+            while (nextTd && !nextTd.querySelector('input')) nextTd = nextTd.nextElementSibling;
+            if (nextTd) nextInput = nextTd.querySelector('input');
+        }
+    }
+
+    if (nextInput) {
+        nextInput.focus();
+        nextInput.select(); // 엑셀처럼 텍스트 전체 선택되어 바로 덮어쓰기 가능
+    }
+});
 
 loadData(); schedule=compute(); render();
 </script>
