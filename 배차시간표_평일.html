@@ -44,6 +44,9 @@ td.dep, td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 td.dep-s { color:#dc2626; font-weight:bold; }
 td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 0; line-height: 1.1; }
 
+/* [공통 적용] 버스 순번 시작 시 얇고 세련된 1px 진회색 구분선! */
+tr.bus-start td { border-top: 1px solid #334155 !important; }
+
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
 .modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
@@ -51,34 +54,30 @@ td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-spa
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* [인쇄 전용 CSS] */
+/* =========================================
+   [인쇄 & 사진 전용 완벽 고정 CSS]
+   브라우저가 인쇄할 때 디자인을 무시하지 못하도록 <head>에 박아둠
+   ========================================= */
+.export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
+.export-wrapper * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+.export-container { height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
+.export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #334155; }
+.export-wrapper th { position: static !important; background:#e2e8f0 !important; border:1px solid #94a3b8; border-top: 1px solid #334155; border-bottom: 1px solid #334155; text-align:center; font-weight:800; color:#0f172a; }
+.export-wrapper td { position: static !important; border:1px solid #cbd5e0; text-align:center; vertical-align:middle; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+.export-wrapper td.seq { position: static !important; font-weight:900; background:#f8fafc !important; border-right:1px solid #334155; color:#0f172a; }
+.export-wrapper td.dep { font-weight:900; color:#1d4ed8; }
+.export-wrapper td.arr { font-weight:900; color:#0f766e; } 
+.export-wrapper td.dep-s { color:#dc2626; background-color:#fef2f2 !important; }
+.export-wrapper td.tt, .export-wrapper td.hj { color:#334155; font-weight:900; } 
+.export-wrapper tr.bus-start td { border-top: 1px solid #334155 !important; } /* 세련된 1px 진회색 적용 */
+
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-    
-    * { 
-        -webkit-print-color-adjust: exact !important; 
-        print-color-adjust: exact !important; 
-        color-adjust: exact !important; 
-    }
-
     body.use-custom-print > *:not(#print-container) { display: none !important; }
     body.use-custom-print #print-container { display: block !important; width: 100%; background: #fff; }
-    
     @page { size: A4 portrait; margin: 0; }
-    
-    .custom-print-page { 
-        width: 100%; 
-        height: 296mm; 
-        padding: 15mm 10mm; 
-        box-sizing: border-box; 
-        page-break-after: always; 
-        break-after: page; 
-        background: #ffffff; 
-        display: flex; 
-        flex-direction: column;
-        overflow: hidden; 
-    }
+    .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
 }
 </style>
@@ -287,18 +286,17 @@ function updatePrintContainer() {
     }
 }
 
-// [화면용 구분선 색상도 부드럽게 조정]
+// [핵심 변경] bus-start 클래스만 부여하고 스타일은 <style>에서 제어
 function busRows(bus,slots){
-    const bt = 'border-top: 1px solid #94a3b8;'; // 화면용 부드러운 구분선
-    let r1=`<td rowspan="3" class="seq" style="${bt}">${bus}</td>`, r2='', r3='';
+    let r1=`<td rowspan="3" class="seq">${bus}</td>`, r2='', r3='';
     slots.forEach((s,i)=>{
         const isS=s&&s.fd==='S'; 
-        r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}" style="${bt}">${s?fmt(s.fd):''}</td>`;
-        if(i<slots.length-1){ const ns=slots[i+1]; r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}" style="${bt}">${ns&&ns.dr!=null?ns.dr:''}</td>`; }
+        r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}">${s?fmt(s.fd):''}</td>`;
+        if(i<slots.length-1){ const ns=slots[i+1]; r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}">${ns&&ns.dr!=null?ns.dr:''}</td>`; }
         r2+=`<td class="tt">${s&&s.tt||''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
         r3+=`<td colspan="2" class="arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
     });
-    return `<tr>${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>`;
+    return `<tr class="bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>`;
 }
 
 function thead(trips){
@@ -342,7 +340,7 @@ function renderInput(el){
     for(let t of trips) h+=`<th>${t}출발</th><th style="width:36px">운행</th>`;
     h+='</tr></thead><tbody>';
     for(let b=1;b<=busCount;b++){
-        h+=`<tr><td class="seq">${b}</td>`;
+        h+=`<tr class="bus-start"><td class="seq">${b}</td>`;
         for(let t of trips){
             const dk=`${b}-${t}`, dv=deps[dk]||'', tv=tts[dk]||'';
             h+=`<td><input class="${dv.toUpperCase()==='S'?'s-val':''}" value="${dv}" data-type="dep" data-bus="${b}" data-trip="${t}" onblur="onInput(this)"></td>`;
@@ -439,7 +437,7 @@ function getActualAmPmTrips() {
 }
 
 // =========================================================
-// [디자인 완성] 인쇄/사진 구분선을 1px의 은은한 회색(#64748b)으로 확정!
+// [핵심 변경] CSS를 전역(<style>)에 위임하고, 여기서는 동적 요소(높이/글자크기)만 적용
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -479,20 +477,16 @@ function getScheduleHTML(target) {
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
 
-    // [색상 및 두께 변경] #1e293b (진한 흑색) -> #64748b (중간 회색), 1.5px -> 1px
+    // <style>은 동적 글자크기와 높이만 관리! 공통 선/색상은 머리의 전역 CSS가 알아서 처리함
     let tableHTML = `<style>
-        .export-wrapper { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
-        .export-wrapper * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-        .table-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
-        .export-wrapper table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #64748b; }
-        .export-wrapper th { position: static !important; background:#e2e8f0 !important; border:1px solid #94a3b8; border-top: 1px solid #64748b; border-bottom: 1px solid #64748b; text-align:center; font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; font-weight:800; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; color:#0f172a; }
-        .export-wrapper td { position: static !important; border:1px solid #cbd5e0; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
-        .export-wrapper td.seq { position: static !important; font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:1px solid #64748b; color:#0f172a; }
-        .export-wrapper td.dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; }
-        .export-wrapper td.arr { font-size:${fsDep}px; font-weight:900; color:#0f766e; } 
-        .export-wrapper td.dep-s { color:#dc2626; }
-        .export-wrapper td.tt, .export-wrapper td.hj { font-size:${fsSub}px; color:#334155; font-weight:900; } 
-    </style><div class="export-wrapper"><div class="table-container">`;
+        #target-${target} th { font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; }
+        #target-${target} td { height:${exactCellHeight}px; }
+        #target-${target} td.seq { font-size:${fsSeq}px; }
+        #target-${target} td.dep { font-size:${fsDep}px; }
+        #target-${target} td.arr { font-size:${fsDep}px; } 
+        #target-${target} td.tt, #target-${target} td.hj { font-size:${fsSub}px; } 
+    </style>
+    <div class="export-wrapper" id="target-${target}"><div class="export-container" style="width:${tableWidth};">`;
 
     function getExportThead(trips) {
         let h = `<tr><th style="width:40px">순번</th>`;
@@ -501,29 +495,28 @@ function getScheduleHTML(target) {
     }
 
     function getExportBusRows(bus, slots) {
-        const bt = 'border-top: 1px solid #64748b !important;'; // 얇고 부드러운 중간 회색선 적용
-        let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="seq" style="${bt}">${bus}</td>`, r2 = '', r3 = '';
+        let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="seq">${bus}</td>`, r2 = '', r3 = '';
         slots.forEach(s => {
             const isS = s && s.fd === 'S';
             const dep = s ? fmt(s.fd) : '';
             
             if (hasAnyTT) {
                 if (isS) {
-                    r1 += `<td rowspan="3" colspan="2" class="dep-s" style="${bt} font-size:${fsDep * 2}px; font-weight:900; background-color:#fef2f2 !important;">S</td>`;
+                    r1 += `<td rowspan="3" colspan="2" class="dep-s" style="font-size:${fsDep * 2}px;">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="dep" style="${bt}">${dep}</td>`;
+                    r1 += `<td colspan="2" class="dep">${dep}</td>`;
                     r2 += `<td class="tt">${s&&s.tt?s.tt:''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
                     r3 += `<td colspan="2" class="arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
                 }
             } else { 
                 if (isS) {
-                    r1 += `<td colspan="2" class="dep-s" style="${bt} font-size:${fsDep * 1.4}px; font-weight:900; background-color:#fef2f2 !important;">S</td>`;
+                    r1 += `<td colspan="2" class="dep-s" style="font-size:${fsDep * 1.4}px;">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="dep" style="${bt}">${dep}</td>`; 
+                    r1 += `<td colspan="2" class="dep">${dep}</td>`; 
                 }
             }
         });
-        return hasAnyTT ? `<tr>${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr>${r1}</tr>`;
+        return hasAnyTT ? `<tr class="bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="bus-start">${r1}</tr>`;
     }
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
