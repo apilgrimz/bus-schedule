@@ -422,8 +422,7 @@ function getActualAmPmTrips() {
 }
 
 // =========================================================
-// [완벽 분리/격리] 사진 및 인쇄 시 "틀 고정", "글자 축소" 버그를 
-// 100% 방어하기 위해 완전히 새로운 클래스명(.x-td 등)을 사용합니다!
+// [핵심 변경] 순번 폰트 크기 확대 및 1.5px 진한 선을 인라인에 꽂아 인쇄기 강제 제압!
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -452,47 +451,56 @@ function getScheduleHTML(target) {
     
     let fsSeq, fsDep, fsSub;
     if (hasAnyTT) {
-        fsSeq = (exactCellHeight * 0.6) * fontScale;
+        // [변경] 순번(fsSeq) 크기를 기존 0.6에서 0.72로 눈에 띄게 키움!
+        fsSeq = (exactCellHeight * 0.72) * fontScale; 
         fsDep = (exactCellHeight * 0.75) * fontScale;
         fsSub = (exactCellHeight * 0.65) * fontScale; 
     } else {
-        fsSeq = Math.min(16, exactCellHeight * 0.5) * fontScale;  
+        // [변경] 운행시간 없을 때도 순번 크기를 16 -> 18로 확대
+        fsSeq = Math.min(18, exactCellHeight * 0.6) * fontScale;  
         fsDep = Math.min(20, exactCellHeight * 0.6) * fontScale;  
         fsSub = 14 * fontScale;  
     }
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
 
-    // 기존 클래스들과 겹쳐서 발생하는 모든 버그를 막기 위해 .x- 로 시작하는 전용 클래스를 인라인으로 정의합니다.
+    const styleVars = `
+        --cell-height: ${exactCellHeight}px;
+        --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px;
+        --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px;
+        --fs-seq: ${fsSeq}px;
+        --fs-dep: ${fsDep}px;
+        --fs-sub: ${fsSub}px;
+        --fs-s-big: ${fsDep * 2}px;
+        --fs-s-small: ${fsDep * 1.4}px;
+    `;
+
+    // [변경] 테두리를 인쇄기기가 인지할 수 있도록 #475569 (진한 회색)과 1.5px 굵기로 세팅!
     let exportStyles = `
         .x-wrap { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
         .x-wrap * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         .x-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
         
-        /* 인쇄 시 맨 윗줄과 아랫줄을 절대 지우지 못하게 강력하게 고정 */
-        .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
+        .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1.5px solid #475569 !important; border-bottom: 1.5px solid #475569 !important; }
         
-        .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; font-weight:800; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; color:#0f172a; }
-        .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
+        .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1.5px solid #475569 !important; text-align:center; font-size:var(--th-fs); font-weight:800; height:var(--th-height); color:#0f172a; }
+        .x-th-seq { border-right: 1px solid #cbd5e1 !important; width: 40px; }
         
-        .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+        .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         
-        .x-seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:1px solid #9ca3af !important; color:#0f172a; }
-        .x-dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; }
-        .x-arr { font-size:${fsDep}px; font-weight:900; color:#0f766e; } 
+        .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #cbd5e1 !important; color:#0f172a; }
+        .x-dep { font-size:var(--fs-dep); font-weight:900; color:#1d4ed8; }
+        .x-arr { font-size:var(--fs-dep); font-weight:900; color:#0f766e; } 
         .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
+        .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:900; } 
         
-        /* 템플릿 리터럴로 변수를 직접 찍어 넣어 html2canvas의 폰트 축소 버그 완전 방어 */
-        .x-tt, .x-hj { font-size:${fsSub}px; color:#334155; font-weight:900; } 
+        .x-bus-start .x-td { border-top: 1.5px solid #475569 !important; }
         
-        /* 인쇄 버그 방어용 그림자(box-shadow)는 캡처 시 색번짐을 일으키므로, border-top만 적용하고 box-shadow는 CSS 파일의 @media print 안에서만 동작하도록 분리했습니다. */
-        .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
-        
-        .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; -webkit-print-color-adjust: exact !important; }
+        .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #475569; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; -webkit-print-color-adjust: exact !important; }
         .x-title-box.pm { color:#991b1b; }
     `;
 
-    let tableHTML = `<style>${exportStyles}</style><div class="x-wrap"><div class="x-container">`;
+    let tableHTML = `<style>${exportStyles}</style><div class="x-wrap" style="${styleVars}"><div class="x-container">`;
 
     function getExportThead(trips) {
         let h = `<tr><th class="x-th x-th-seq">순번</th>`;
@@ -501,24 +509,27 @@ function getScheduleHTML(target) {
     }
 
     function getExportBusRows(bus, slots) {
-        let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-seq">${bus}</td>`, r2 = '', r3 = '';
+        // [필살기] CSS 클래스로도 주지만, td 안쪽에 inline-style 로도 1.5px 진한 선을 쑤셔 넣음 (인쇄 무시 100% 방지용)
+        const bt = 'border-top: 1.5px solid #475569 !important;'; 
+        let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-seq" style="${bt}">${bus}</td>`, r2 = '', r3 = '';
+        
         slots.forEach(s => {
             const isS = s && s.fd === 'S';
             const dep = s ? fmt(s.fd) : '';
             
             if (hasAnyTT) {
                 if (isS) {
-                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps" style="font-size:${fsDep * 2}px;">S</td>`;
+                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps" style="${bt} font-size:var(--fs-s-big); border-bottom: 1px solid #cbd5e1;">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`;
+                    r1 += `<td colspan="2" class="x-td x-dep" style="${bt}">${dep}</td>`;
                     r2 += `<td class="x-td x-tt">${s&&s.tt?s.tt:''}</td><td class="x-td x-hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
                     r3 += `<td colspan="2" class="x-td x-arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
                 }
             } else { 
                 if (isS) {
-                    r1 += `<td colspan="2" class="x-td x-deps" style="font-size:${fsDep * 1.4}px;">S</td>`;
+                    r1 += `<td colspan="2" class="x-td x-deps" style="${bt} font-size:var(--fs-s-small);">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`; 
+                    r1 += `<td colspan="2" class="x-td x-dep" style="${bt}">${dep}</td>`; 
                 }
             }
         });
