@@ -33,9 +33,7 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .infobar b { font-weight:bold }
 .content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
 
-/* =========================================
-   [앱 화면 전용 디자인 - 폰트 및 칸 너비 확대] 
-   ========================================= */
+/* 앱 화면 공통 테이블 디자인 */
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
 th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:4px 2px; font-size:11px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
 th.fix-col { left: 0; z-index: 12; border-right: 1px solid #9ca3af !important; }
@@ -57,9 +55,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* =========================================
-   [인쇄 전용 CSS (프린터 잉크 절약 100% 무력화)]
-   ========================================= */
+/* 인쇄 전용 CSS (프린터 잉크 절약 100% 무력화) */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -431,9 +427,6 @@ function getActualAmPmTrips() {
     };
 }
 
-// =========================================================
-// [출력/인쇄 완벽 통합]
-// =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
     
@@ -501,7 +494,6 @@ function getScheduleHTML(target) {
         .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
         .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:900; } 
         
-        /* 사진 전송시 보이는 정상적인 연회색 1px 선 */
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
@@ -583,11 +575,33 @@ function getScheduleHTML(target) {
     return contentHTML + tableHTML + `</div></div>`;
 }
 
-// [노트북 카카오톡 완벽 전송 로직] 
+// [핵심] 노트북(PC) 환경에서 보안 우회를 위한 '미리보기 모달' 생성 로직
+function showPCModal(dataUrl, fileName) {
+    const modal = document.createElement('div');
+    modal.className = "pc-modal-wrap";
+    modal.style = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;";
+    modal.innerHTML = `
+        <div style="background:#fff; padding:20px; border-radius:12px; width:95%; max-width:800px; max-height:95vh; display:flex; flex-direction:column; align-items:center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <h3 style="margin:0 0 10px 0; color:#1e40af; font-size:18px;">✅ 시간표 생성 완료!</h3>
+            <p style="margin:0 0 15px 0; font-weight:bold; color:#e53e3e; text-align:center; font-size:14px; background:#fff5f5; padding:10px; border-radius:8px; border:1px solid #fed7d7; width:100%;">
+                아래 이미지를 <b>마우스 오른쪽 버튼으로 클릭</b>한 후<br>[ 이미지 복사 ]를 눌러 카카오톡 창에 <b>Ctrl + V (붙여넣기)</b> 하세요.
+            </p>
+            <div style="flex:1; overflow:auto; border:2px dashed #cbd5e0; border-radius:8px; margin-bottom:15px; width:100%; display:flex; justify-content:center; background:#f8fafc; padding:10px;">
+                <img src="${dataUrl}" style="max-width:100%; height:auto; display:block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+            </div>
+            <div style="display:flex; gap:10px; width:100%;">
+                <a href="${dataUrl}" download="${fileName}" style="flex:1; padding:14px; background:#10b981; color:#fff; text-align:center; font-weight:bold; font-size:15px; text-decoration:none; border-radius:8px; transition:0.2s;">📥 내 컴퓨터에 파일로 저장</a>
+                <button onclick="this.closest('.pc-modal-wrap').remove()" style="flex:1; padding:14px; background:#4a5568; color:#fff; font-weight:bold; font-size:15px; border:none; border-radius:8px; cursor:pointer; transition:0.2s;">닫기</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
 async function captureAndShare(target) {
     closeShareModal();
     const loading = document.createElement('div');
-    loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px;">이미지 생성 중...</div>';
+    loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">이미지 생성 중...</div>';
     document.body.appendChild(loading);
 
     const actualTrips = getActualAmPmTrips();
@@ -610,44 +624,31 @@ async function captureAndShare(target) {
     document.body.appendChild(exportDiv);
 
     const canvas = await html2canvas(exportDiv, { scale: 2 });
-    canvas.toBlob(async (blob) => {
-        const fileName = `${busNum}번_${displayTitle}_${target}.png`;
-        const file = new File([blob], fileName, { type: 'image/png' });
-        
-        let shared = false;
+    const imgData = canvas.toDataURL('image/png');
+    const fileName = `${busNum}번_${displayTitle}_${target}.png`;
 
-        // 1. 모바일 환경 (공유창 오픈)
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    // 스마트폰 환경(공유 API 지원)인지 노트북(PC) 환경인지 판단
+    if (navigator.canShare) {
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], fileName, { type: 'image/png' });
             try {
                 await navigator.share({ files: [file], title: fileName });
-                shared = true;
             } catch (e) {
-                // 사용자가 공유창 닫음
+                // 사용자가 모바일 공유창을 취소하거나 에러가 났을 경우 PC 모달을 띄움
+                showPCModal(imgData, fileName);
             }
-        }
+            cleanup();
+        });
+    } else {
+        // PC 환경이면 바로 미리보기 모달 띄우기
+        showPCModal(imgData, fileName);
+        cleanup();
+    }
 
-        // 2. 노트북(PC) 환경 -> 자동 다운로드 및 클립보드 복사 (Ctrl+V)
-        if (!shared) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-
-            try {
-                const item = new ClipboardItem({ 'image/png': blob });
-                await navigator.clipboard.write([item]);
-                alert('📥 사진이 저장되었으며 [클립보드]에도 복사되었습니다!\n\n💬 PC 카카오톡 창에 대고 [ Ctrl + V ]를 눌러 바로 전송하세요!');
-            } catch (err) {
-                alert('📥 사진이 내 컴퓨터에 다운로드 되었습니다!\nPC 카카오톡으로 파일을 끌어다 놓으세요.');
-            }
-        }
-
-        document.body.removeChild(exportDiv); document.body.removeChild(loading);
-    });
+    function cleanup() {
+        document.body.removeChild(exportDiv); 
+        document.body.removeChild(loading);
+    }
 }
 
 function triggerPrint() {
