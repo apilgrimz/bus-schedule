@@ -34,23 +34,24 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
 
 /* =========================================
-   [앱 화면 전용 디자인] 
+   [앱 화면 전용 디자인 - 폰트 및 칸 너비 확대] 
    ========================================= */
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
-th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:2px; font-size:10px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
+th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:4px 2px; font-size:11px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
 th.fix-col { left: 0; z-index: 12; border-right: 1px solid #9ca3af !important; }
 td.seq { font-weight:bold; background:#f8fafc !important; width:28px; position: sticky; left: 0; z-index: 5; border-right: 1px solid #9ca3af !important; }
 td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-td.dep, td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
-td.dep-s { color:#dc2626; font-weight:bold; }
-td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 0; line-height: 1.1; }
+/* [핵심 수정] 글자 크기 및 굵기 대폭 확대 */
+td.dep, td.arr { font-size: 12px; font-weight: 900; color: #1d4ed8; padding: 2px 0; }
+td.dep-s { color:#dc2626; font-weight:900; }
+td.tt, td.hj { font-size: 10.5px; font-weight: 800; letter-spacing: 0; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 2px 0; line-height: 1.2; }
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 
-.input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
+.input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:12px; font-weight:bold; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
 .modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
 .modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; text-align:left; }
@@ -70,14 +71,10 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
     .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
 
-    /* [핵심] 오직 프린터에게만 가짜 선(그림자)을 그려서 전달! 사진 캡처앱은 이 코드를 못 봄 */
+    /* 프린터 가짜 선(그림자) 락온 */
     .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
     .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
-    
-    /* 세로 순번 선도 안 지워지게 락온 */
     .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
-    
-    /* 십자교차점 보완 */
     .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
     .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
 }
@@ -305,9 +302,10 @@ function thead(trips){
     return `<thead>${h}</tr></thead>`;
 }
 
+// [핵심] 화면 렌더링 시 칸의 너비를 늘려 글자가 넉넉히 들어가도록 넓혔습니다 (기존 12 -> 14, 15 -> 17)
 function renderIntegrated(el){
     const trips = Array.from({length: maxTrip}, (_, i) => i + 1);
-    let h=`<div style="padding:8px; overflow-x:auto;"><table style="min-width:${Math.max(100, maxTrip * 12)}%">${thead(trips)}<tbody>`;
+    let h=`<div style="padding:8px; overflow-x:auto;"><table style="min-width:${Math.max(100, maxTrip * 14)}%">${thead(trips)}<tbody>`;
     for(let b=1;b<=busCount;b++) h+=busRows(b, trips.map(t=>gs(b,t)));
     el.innerHTML=h+'</tbody></table></div>';
 }
@@ -321,12 +319,12 @@ function renderSplit(el){
     let h=`<div class="split-grid" style="display:flex; flex-direction:column; gap:15px; padding:8px;">
              <div class="split-item" style="overflow-x:auto;">
                <div class="section-title section-am" style="font-weight:bold; color:#1e40af; margin-bottom:4px;">오전</div>
-               <table style="min-width:${Math.max(100, amTrips.length * 15)}%">${thead(amTrips)}<tbody>`;
+               <table style="min-width:${Math.max(100, amTrips.length * 17)}%">${thead(amTrips)}<tbody>`;
     for(let b=1;b<=busCount;b++) h+=busRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
     h+=`</tbody></table></div>
         <div class="split-item" style="overflow-x:auto;">
           <div class="section-title section-pm" style="font-weight:bold; color:#991b1b; margin-bottom:4px;">오후 (${pmTrip}회${pmBus}번~)</div>
-          <table style="min-width:${Math.max(100, pmTrips.length * 15)}%">${thead(pmTrips)}<tbody>`;
+          <table style="min-width:${Math.max(100, pmTrips.length * 17)}%">${thead(pmTrips)}<tbody>`;
     for(let p=0;p<busCount;p++){
         const b=((pmBus-1+p)%busCount)+1;
         h+=busRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
@@ -437,9 +435,7 @@ function getActualAmPmTrips() {
 }
 
 // =========================================================
-// [사진 캡처 & 인쇄 분리 구조]
-// html2canvas는 순수한 1px border-top을 보고 깔끔하게 캡처하며,
-// 브라우저는 인쇄 시 @media print에 정의된 그림자를 덧씌워 출력합니다.
+// [출력(사진/인쇄) 글자 크기 최적화] 
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -468,11 +464,12 @@ function getScheduleHTML(target) {
     
     let fsSeq, fsDep, fsSub;
     if (hasAnyTT) {
-        fsSeq = (exactCellHeight * 0.8) * fontScale;  // [변경] 순번 크기를 15% 더 큼직하게 확대
-        fsDep = (exactCellHeight * 0.75) * fontScale;
-        fsSub = (exactCellHeight * 0.65) * fontScale; 
+        fsSeq = (exactCellHeight * 0.8) * fontScale;  
+        fsDep = (exactCellHeight * 0.78) * fontScale;
+        // [핵심 변경] 출력/인쇄 시의 운행/회차지 시간 글자 크기 비율 대폭 상향 (0.65 -> 0.72)
+        fsSub = (exactCellHeight * 0.72) * fontScale; 
     } else {
-        fsSeq = Math.min(22, exactCellHeight * 0.7) * fontScale;  // [변경] 운행시간 없을 때도 확대
+        fsSeq = Math.min(22, exactCellHeight * 0.7) * fontScale;  
         fsDep = Math.min(20, exactCellHeight * 0.6) * fontScale;  
         fsSub = 14 * fontScale;  
     }
@@ -490,7 +487,6 @@ function getScheduleHTML(target) {
         --fs-s-small: ${fsDep * 1.4}px;
     `;
 
-    // 캡처용 스타일: 그림자 코드를 싹 빼서 배경 채워짐 방지
     let exportStyles = `
         .x-wrap { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
         .x-wrap * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
@@ -509,7 +505,6 @@ function getScheduleHTML(target) {
         .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
         .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:900; } 
         
-        /* 사진 캡처를 위한 1px 예쁜 연회색 선 */
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
