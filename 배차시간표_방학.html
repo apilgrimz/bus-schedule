@@ -48,6 +48,7 @@ td.dep-s { color:#dc2626; font-weight:bold; }
 td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 0; line-height: 1.1; }
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
+table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
@@ -56,15 +57,29 @@ table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* [인쇄 전용 기본 설정] */
+/* =========================================
+   [인쇄 전용 CSS (프린터 잉크 절약 100% 무력화)]
+   ========================================= */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
     body.use-custom-print > *:not(#print-container) { display: none !important; }
     body.use-custom-print #print-container { display: block !important; width: 100%; background: #fff; }
     @page { size: A4 portrait; margin: 0; }
     .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
+
+    /* [핵심] 오직 프린터에게만 가짜 선(그림자)을 그려서 전달! 사진 캡처앱은 이 코드를 못 봄 */
+    .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
+    .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
+    
+    /* 세로 순번 선도 안 지워지게 락온 */
+    .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
+    
+    /* 십자교차점 보완 */
+    .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+    .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
 }
 </style>
 </head>
@@ -422,7 +437,9 @@ function getActualAmPmTrips() {
 }
 
 // =========================================================
-// [핵심 변경] 순번 폰트 크기 확대 및 1.5px 진한 선을 인라인에 꽂아 인쇄기 강제 제압!
+// [사진 캡처 & 인쇄 분리 구조]
+// html2canvas는 순수한 1px border-top을 보고 깔끔하게 캡처하며,
+// 브라우저는 인쇄 시 @media print에 정의된 그림자를 덧씌워 출력합니다.
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -451,13 +468,11 @@ function getScheduleHTML(target) {
     
     let fsSeq, fsDep, fsSub;
     if (hasAnyTT) {
-        // [변경] 순번(fsSeq) 크기를 기존 0.6에서 0.72로 눈에 띄게 키움!
-        fsSeq = (exactCellHeight * 0.72) * fontScale; 
+        fsSeq = (exactCellHeight * 0.8) * fontScale;  // [변경] 순번 크기를 15% 더 큼직하게 확대
         fsDep = (exactCellHeight * 0.75) * fontScale;
         fsSub = (exactCellHeight * 0.65) * fontScale; 
     } else {
-        // [변경] 운행시간 없을 때도 순번 크기를 16 -> 18로 확대
-        fsSeq = Math.min(18, exactCellHeight * 0.6) * fontScale;  
+        fsSeq = Math.min(22, exactCellHeight * 0.7) * fontScale;  // [변경] 운행시간 없을 때도 확대
         fsDep = Math.min(20, exactCellHeight * 0.6) * fontScale;  
         fsSub = 14 * fontScale;  
     }
@@ -475,28 +490,29 @@ function getScheduleHTML(target) {
         --fs-s-small: ${fsDep * 1.4}px;
     `;
 
-    // [변경] 테두리를 인쇄기기가 인지할 수 있도록 #475569 (진한 회색)과 1.5px 굵기로 세팅!
+    // 캡처용 스타일: 그림자 코드를 싹 빼서 배경 채워짐 방지
     let exportStyles = `
         .x-wrap { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
         .x-wrap * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         .x-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
         
-        .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1.5px solid #475569 !important; border-bottom: 1.5px solid #475569 !important; }
+        .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
         
-        .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1.5px solid #475569 !important; text-align:center; font-size:var(--th-fs); font-weight:800; height:var(--th-height); color:#0f172a; }
-        .x-th-seq { border-right: 1px solid #cbd5e1 !important; width: 40px; }
+        .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:800; height:var(--th-height); color:#0f172a; }
+        .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
         
         .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         
-        .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #cbd5e1 !important; color:#0f172a; }
+        .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
         .x-dep { font-size:var(--fs-dep); font-weight:900; color:#1d4ed8; }
         .x-arr { font-size:var(--fs-dep); font-weight:900; color:#0f766e; } 
         .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
         .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:900; } 
         
-        .x-bus-start .x-td { border-top: 1.5px solid #475569 !important; }
+        /* 사진 캡처를 위한 1px 예쁜 연회색 선 */
+        .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
-        .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #475569; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; -webkit-print-color-adjust: exact !important; }
+        .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
         .x-title-box.pm { color:#991b1b; }
     `;
 
@@ -509,9 +525,7 @@ function getScheduleHTML(target) {
     }
 
     function getExportBusRows(bus, slots) {
-        // [필살기] CSS 클래스로도 주지만, td 안쪽에 inline-style 로도 1.5px 진한 선을 쑤셔 넣음 (인쇄 무시 100% 방지용)
-        const bt = 'border-top: 1.5px solid #475569 !important;'; 
-        let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-seq" style="${bt}">${bus}</td>`, r2 = '', r3 = '';
+        let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-seq">${bus}</td>`, r2 = '', r3 = '';
         
         slots.forEach(s => {
             const isS = s && s.fd === 'S';
@@ -519,17 +533,17 @@ function getScheduleHTML(target) {
             
             if (hasAnyTT) {
                 if (isS) {
-                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps" style="${bt} font-size:var(--fs-s-big); border-bottom: 1px solid #cbd5e1;">S</td>`;
+                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps" style="font-size:var(--fs-s-big); border-bottom: 1px solid #cbd5e1;">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="x-td x-dep" style="${bt}">${dep}</td>`;
+                    r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`;
                     r2 += `<td class="x-td x-tt">${s&&s.tt?s.tt:''}</td><td class="x-td x-hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
                     r3 += `<td colspan="2" class="x-td x-arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
                 }
             } else { 
                 if (isS) {
-                    r1 += `<td colspan="2" class="x-td x-deps" style="${bt} font-size:var(--fs-s-small);">S</td>`;
+                    r1 += `<td colspan="2" class="x-td x-deps" style="font-size:var(--fs-s-small);">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="x-td x-dep" style="${bt}">${dep}</td>`; 
+                    r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`; 
                 }
             }
         });
