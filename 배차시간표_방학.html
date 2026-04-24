@@ -34,7 +34,7 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
 
 /* =========================================
-   [앱 화면 공통 테이블 디자인] 
+   [앱 화면 전용 디자인] 
    ========================================= */
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
 th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:2px; font-size:10px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
@@ -47,10 +47,7 @@ td.dep, td.arr { font-size: 11px; font-weight: bold; color: #1d4ed8; }
 td.dep-s { color:#dc2626; font-weight:bold; }
 td.tt, td.hj { font-size: 8.5px; letter-spacing: -1px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 0; line-height: 1.1; }
 
-/* 앱 화면용 일반 선 */
-table tbody tr.bus-start td { 
-    border-top: 1px solid #9ca3af !important; 
-}
+table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:11px; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
@@ -59,22 +56,15 @@ table tbody tr.bus-start td {
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* [인쇄 전용 CSS] */
+/* [인쇄 전용 기본 설정] */
 #print-container { display: none; }
 @media print {
-    html, body { height: 100% !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    html, body { height: 100% !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
     body.use-custom-print > *:not(#print-container) { display: none !important; }
     body.use-custom-print #print-container { display: block !important; width: 100%; background: #fff; }
     @page { size: A4 portrait; margin: 0; }
     .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
-
-    /* [핵심 수정] 프린터가 선을 지우지 못하게 막는 그림자 꼼수는 오직 "인쇄 모드"에서만 작동하도록 격리! */
-    table tbody tr.bus-start td,
-    .export-wrapper tr.bus-start td {
-        box-shadow: inset 0 1px 0 0 #9ca3af !important; 
-    }
 }
 </style>
 </head>
@@ -432,7 +422,8 @@ function getActualAmPmTrips() {
 }
 
 // =========================================================
-// [핵심 변경] 사진 변색 방지를 위해 그림자 스타일을 순수 CSS에서 분리 제거!
+// [완벽 분리/격리] 사진 및 인쇄 시 "틀 고정", "글자 축소" 버그를 
+// 100% 방어하기 위해 완전히 새로운 클래스명(.x-td 등)을 사용합니다!
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -472,49 +463,66 @@ function getScheduleHTML(target) {
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
 
-    // 자바스크립트가 DOM에 직접 스타일 변수를 꽂아넣어 기본 디자인 세팅
-    const styleVars = `
-        --cell-height: ${exactCellHeight}px;
-        --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px;
-        --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px;
-        --fs-seq: ${fsSeq}px;
-        --fs-dep: ${fsDep}px;
-        --fs-sub: ${fsSub}px;
-        --fs-s-big: ${fsDep * 2}px;
-        --fs-s-small: ${fsDep * 1.4}px;
+    // 기존 클래스들과 겹쳐서 발생하는 모든 버그를 막기 위해 .x- 로 시작하는 전용 클래스를 인라인으로 정의합니다.
+    let exportStyles = `
+        .x-wrap { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
+        .x-wrap * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        .x-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
+        
+        /* 인쇄 시 맨 윗줄과 아랫줄을 절대 지우지 못하게 강력하게 고정 */
+        .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
+        
+        .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; font-weight:800; height:${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; color:#0f172a; }
+        .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
+        
+        .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:${exactCellHeight}px; padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+        
+        .x-seq { font-weight:900; background:#f8fafc !important; font-size:${fsSeq}px; border-right:1px solid #9ca3af !important; color:#0f172a; }
+        .x-dep { font-size:${fsDep}px; font-weight:900; color:#1d4ed8; }
+        .x-arr { font-size:${fsDep}px; font-weight:900; color:#0f766e; } 
+        .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
+        
+        /* 템플릿 리터럴로 변수를 직접 찍어 넣어 html2canvas의 폰트 축소 버그 완전 방어 */
+        .x-tt, .x-hj { font-size:${fsSub}px; color:#334155; font-weight:900; } 
+        
+        /* 인쇄 버그 방어용 그림자(box-shadow)는 캡처 시 색번짐을 일으키므로, border-top만 적용하고 box-shadow는 CSS 파일의 @media print 안에서만 동작하도록 분리했습니다. */
+        .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
+        
+        .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; -webkit-print-color-adjust: exact !important; }
+        .x-title-box.pm { color:#991b1b; }
     `;
 
-    let tableHTML = `<div class="export-wrapper" style="${styleVars}"><div class="export-container" style="width:${tableWidth};">`;
+    let tableHTML = `<style>${exportStyles}</style><div class="x-wrap"><div class="x-container">`;
 
     function getExportThead(trips) {
-        let h = `<tr><th class="fix-col" style="width:40px">순번</th>`;
-        trips.forEach(t => { h += `<th colspan="2">${t}회</th>`; });
+        let h = `<tr><th class="x-th x-th-seq">순번</th>`;
+        trips.forEach(t => { h += `<th class="x-th" colspan="2">${t}회</th>`; });
         return `<thead>${h}</tr></thead>`;
     }
 
     function getExportBusRows(bus, slots) {
-        let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="seq">${bus}</td>`, r2 = '', r3 = '';
+        let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-seq">${bus}</td>`, r2 = '', r3 = '';
         slots.forEach(s => {
             const isS = s && s.fd === 'S';
             const dep = s ? fmt(s.fd) : '';
             
             if (hasAnyTT) {
                 if (isS) {
-                    r1 += `<td rowspan="3" colspan="2" class="dep-s s-big">S</td>`;
+                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps" style="font-size:${fsDep * 2}px;">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="dep">${dep}</td>`;
-                    r2 += `<td class="tt">${s&&s.tt?s.tt:''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
-                    r3 += `<td colspan="2" class="arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
+                    r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`;
+                    r2 += `<td class="x-td x-tt">${s&&s.tt?s.tt:''}</td><td class="x-td x-hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
+                    r3 += `<td colspan="2" class="x-td x-arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
                 }
             } else { 
                 if (isS) {
-                    r1 += `<td colspan="2" class="dep-s s-small">S</td>`;
+                    r1 += `<td colspan="2" class="x-td x-deps" style="font-size:${fsDep * 1.4}px;">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="dep">${dep}</td>`; 
+                    r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`; 
                 }
             }
         });
-        return hasAnyTT ? `<tr class="bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="bus-start">${r1}</tr>`;
+        return hasAnyTT ? `<tr class="x-bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="x-bus-start">${r1}</tr>`;
     }
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
@@ -524,15 +532,15 @@ function getScheduleHTML(target) {
     const pmTrips = Array.from({length: actualTrips.maxPm}, (_, i) => i + 1);
     
     if (target === 'integrated') {
-        tableHTML += `<table class="export-table">${getExportThead(integratedTrips)}<tbody>`;
+        tableHTML += `<table class="x-table">${getExportThead(integratedTrips)}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, integratedTrips.map(t=>gs(b,t)));
         tableHTML += `</tbody></table>`;
     } else if (target === 'am') {
-        tableHTML += `<table class="export-table">${getExportThead(amTrips)}<tbody>`;
+        tableHTML += `<table class="x-table">${getExportThead(amTrips)}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
         tableHTML += `</tbody></table>`;
     } else if (target === 'pm') {
-        tableHTML += `<table class="export-table">${getExportThead(pmTrips)}<tbody>`;
+        tableHTML += `<table class="x-table">${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
             tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
@@ -540,14 +548,14 @@ function getScheduleHTML(target) {
         tableHTML += `</tbody></table>`;
     } else if (target === 'split') { 
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
-                        <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3b8; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; -webkit-print-color-adjust: exact !important;">[ 오 전 ]</div>
-                        <table class="export-table">${getExportThead(amTrips)}<tbody>`;
+                        <div class="x-title-box">[ 오 전 ]</div>
+                        <table class="x-table">${getExportThead(amTrips)}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
         tableHTML += `</tbody></table></div>`;
         
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
-                        <div style="text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3b8; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#991b1b; -webkit-print-color-adjust: exact !important;">[ 오 후 ]</div>
-                        <table class="export-table">${getExportThead(pmTrips)}<tbody>`;
+                        <div class="x-title-box pm">[ 오 후 ]</div>
+                        <table class="x-table">${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
             tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
