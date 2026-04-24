@@ -43,7 +43,6 @@ td.seq { font-weight:bold; background:#f8fafc !important; width:28px; position: 
 td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-/* [핵심 수정] 글자 크기 및 굵기 대폭 확대 */
 td.dep, td.arr { font-size: 12px; font-weight: 900; color: #1d4ed8; padding: 2px 0; }
 td.dep-s { color:#dc2626; font-weight:900; }
 td.tt, td.hj { font-size: 10.5px; font-weight: 800; letter-spacing: 0; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 2px 0; line-height: 1.2; }
@@ -71,7 +70,6 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
     .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
 
-    /* 프린터 가짜 선(그림자) 락온 */
     .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
     .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
     .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
@@ -302,7 +300,6 @@ function thead(trips){
     return `<thead>${h}</tr></thead>`;
 }
 
-// [핵심] 화면 렌더링 시 칸의 너비를 늘려 글자가 넉넉히 들어가도록 넓혔습니다 (기존 12 -> 14, 15 -> 17)
 function renderIntegrated(el){
     const trips = Array.from({length: maxTrip}, (_, i) => i + 1);
     let h=`<div style="padding:8px; overflow-x:auto;"><table style="min-width:${Math.max(100, maxTrip * 14)}%">${thead(trips)}<tbody>`;
@@ -435,7 +432,7 @@ function getActualAmPmTrips() {
 }
 
 // =========================================================
-// [출력(사진/인쇄) 글자 크기 최적화] 
+// [출력/인쇄 완벽 통합]
 // =========================================================
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
@@ -466,7 +463,6 @@ function getScheduleHTML(target) {
     if (hasAnyTT) {
         fsSeq = (exactCellHeight * 0.8) * fontScale;  
         fsDep = (exactCellHeight * 0.78) * fontScale;
-        // [핵심 변경] 출력/인쇄 시의 운행/회차지 시간 글자 크기 비율 대폭 상향 (0.65 -> 0.72)
         fsSub = (exactCellHeight * 0.72) * fontScale; 
     } else {
         fsSeq = Math.min(22, exactCellHeight * 0.7) * fontScale;  
@@ -505,6 +501,7 @@ function getScheduleHTML(target) {
         .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
         .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:900; } 
         
+        /* 사진 전송시 보이는 정상적인 연회색 1px 선 */
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
@@ -586,6 +583,7 @@ function getScheduleHTML(target) {
     return contentHTML + tableHTML + `</div></div>`;
 }
 
+// [노트북 카카오톡 완벽 전송 로직] 
 async function captureAndShare(target) {
     closeShareModal();
     const loading = document.createElement('div');
@@ -613,8 +611,41 @@ async function captureAndShare(target) {
 
     const canvas = await html2canvas(exportDiv, { scale: 2 });
     canvas.toBlob(async (blob) => {
-        const file = new File([blob], `${busNum}번_${displayTitle}_${target}.png`, { type: 'image/png' });
-        if (navigator.share) await navigator.share({ files: [file] }).catch(()=>{});
+        const fileName = `${busNum}번_${displayTitle}_${target}.png`;
+        const file = new File([blob], fileName, { type: 'image/png' });
+        
+        let shared = false;
+
+        // 1. 모바일 환경 (공유창 오픈)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: fileName });
+                shared = true;
+            } catch (e) {
+                // 사용자가 공유창 닫음
+            }
+        }
+
+        // 2. 노트북(PC) 환경 -> 자동 다운로드 및 클립보드 복사 (Ctrl+V)
+        if (!shared) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+
+            try {
+                const item = new ClipboardItem({ 'image/png': blob });
+                await navigator.clipboard.write([item]);
+                alert('📥 사진이 저장되었으며 [클립보드]에도 복사되었습니다!\n\n💬 PC 카카오톡 창에 대고 [ Ctrl + V ]를 눌러 바로 전송하세요!');
+            } catch (err) {
+                alert('📥 사진이 내 컴퓨터에 다운로드 되었습니다!\nPC 카카오톡으로 파일을 끌어다 놓으세요.');
+            }
+        }
+
         document.body.removeChild(exportDiv); document.body.removeChild(loading);
     });
 }
