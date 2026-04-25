@@ -7,33 +7,33 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2563eb">
+<meta name="theme-color" content="#475569">
 <title>버스 배차 관리(임시)</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html { background-color: #e2e8f0; height: 100%; display: flex; justify-content: center; }
-body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:#f5f5f5; font-size:12px; -webkit-text-size-adjust:none; display:flex; flex-direction:column; height: 100%; width: 100%; max-width: 1000px; box-shadow: 0 0 20px rgba(0,0,0,0.15); overflow: hidden; margin: 0 auto; }
+body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:#f5f5f5; font-size:12px; -webkit-text-size-adjust:none; display:flex; flex-direction:column; height: 100%; width: 100%; max-width: 1200px; box-shadow: 0 0 20px rgba(0,0,0,0.15); overflow: hidden; margin: 0 auto; }
 
 .topbar { background:#fff; border-bottom:1px solid #ddd; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; z-index:20; box-shadow:0 1px 3px rgba(0,0,0,.08); flex-shrink:0; }
-.topbar h1 { font-size:14px; font-weight:bold; color: #2563eb; }
+.topbar h1 { font-size:14px; font-weight:bold; color: #475569; }
 .tabs { display:flex; gap:4px }
 .tab { padding:7px 10px; border-radius:8px; font-size:12px; font-weight:bold; border:none; cursor:pointer; background:#f0f0f0; color:#555; transition: 0.2s; }
-.tab.active { background:#2563eb; color:#fff }
+.tab.active { background:#475569; color:#fff }
 .tab.print-btn { background:#10b981; color:#fff; } 
 .tab.share-btn { background:#8b5cf6; color:#fff; }
 
 .quick-nav { display: flex; background: #fff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; align-items: center; }
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
 .nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; flex-shrink:0; }
-.nav-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.nav-btn.active { background: #475569; color: #fff; border-color: #475569; }
 .nav-btn.home { background: #4a5568; color: #fff; border-color: #4a5568; }
 
-.infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
-.infobar b { font-weight:bold; color:#1e40af; }
+.infobar { padding:4px 12px; background:#f1f5f9; font-size:10px; color:#334155; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #cbd5e1; }
+.infobar b { font-weight:bold; color:#0f172a; }
 .content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
 
-/* 임시 버전 전용 (나란히 레이아웃, 차번호 입력칸 추가) */
+/* 앱 화면 공통 테이블 디자인 (임시 분리형) */
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
 th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:4px 2px; font-size:11px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
 th.fix-col { left: 0; z-index: 12; border-right: 1px solid #9ca3af !important; width: 48px !important; }
@@ -49,16 +49,16 @@ table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:12px; font-weight:bold; padding:6px 2px; color:#1d4ed8; }
-.name-input { color:#0f172a !important; font-size:13px !important; background: transparent !important; }
-.name-input::placeholder { color: #94a3b8; font-weight: normal; }
+.name-input { color:#0f172a !important; font-size:14px !important; background: transparent !important; }
+.name-input::placeholder { color: #94a3b8; font-weight: normal; font-size:11px; }
 
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
 .modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
 .modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; text-align:left; }
-.modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
+.modal-row input { width:64px; height:40px; border:2px solid #94a3b8; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* 브라우저 인쇄 버그 완벽 격리 */
+/* 인쇄 전용 CSS (프린터 잉크 절약 100% 무력화) */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -83,7 +83,8 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
   <h1 id="appTitle">배차 관리</h1>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
-    <button class="tab" onclick="switchView('split')">분리</button>
+    <button class="tab" onclick="switchView('am')">오전</button>
+    <button class="tab" onclick="switchView('pm')">오후</button>
     <button class="tab" onclick="switchView('input')">입력</button>
     <button class="tab share-btn" onclick="openShareModal()">📷 전송</button>
     <button class="tab print-btn" onclick="triggerPrint()">🖨️</button> <button class="tab" onclick="openSettings()">⚙️</button>
@@ -96,7 +97,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
   <button onclick="location.replace('배차시간표_토요일.html')" id="link-saturday" class="nav-btn">토요일</button>
   <button onclick="location.replace('배차시간표_일요일.html')" id="link-sunday" class="nav-btn">일요일</button>
   <button onclick="location.replace('배차시간표_방학.html')" id="link-vacation" class="nav-btn">방학</button>
-  <button onclick="location.replace('배차시간표_임시.html')" id="link-temp" class="nav-btn" style="background:#475569; color:#fff; border:none;">임시</button>
+  <button onclick="location.replace('배차시간표_임시.html')" id="link-temp" class="nav-btn active">⚠️ 임시</button>
 </div>
 
 <div class="infobar" id="infobar"></div>
@@ -105,33 +106,34 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 
 <div class="modal-bg hidden" id="modal-bg" onclick="closeSettings()">
   <div class="modal" onclick="event.stopPropagation()">
-    <h3 style="text-align:left;">⚙️ 배차 설정 및 백업 (임시)</h3><br>
+    <h3 style="text-align:left; color:#475569;">⚙️ 임시 배차 설정</h3><br>
     <div class="modal-row"><label>운행대수</label><div><input id="s-bc" type="number">대</div></div>
     <div class="modal-row"><label>회차지비율</label><input id="s-rt" type="text" style="width:80px"></div>
     <div class="modal-row"><label style="color:#1e40af;">오전 횟수</label><div><input id="s-am" type="number" style="width:45px">회</div></div>
     <div class="modal-row"><label style="color:#991b1b;">오후 횟수</label><div><input id="s-pm" type="number" style="width:45px">회</div></div>
     
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:15px;">
-        <p style="font-size:11px; color:#666; margin-bottom:10px; text-align:left;">⚠️ 업데이트 전 데이터를 백업하세요.</p>
+        <p style="font-size:11px; color:#666; margin-bottom:10px; text-align:left;">⚠️ 임시 데이터 백업/복구</p>
         <div style="display:flex; gap:8px;">
-            <button style="flex:1; padding:8px; font-size:11px; border-radius:6px; border:1px solid #2563eb; background:white; color:#2563eb;" onclick="exportData()">💾 데이터 백업</button>
-            <button style="flex:1; padding:8px; font-size:11px; border-radius:6px; border:1px solid #10b981; background:white; color:#10b981;" onclick="document.getElementById('importFile').click()">📂 데이터 복구</button>
+            <button style="flex:1; padding:8px; font-size:11px; border-radius:6px; border:1px solid #475569; background:white; color:#475569;" onclick="exportData()">💾 백업</button>
+            <button style="flex:1; padding:8px; font-size:11px; border-radius:6px; border:1px solid #10b981; background:white; color:#10b981;" onclick="document.getElementById('importFile').click()">📂 복구</button>
             <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(this)">
         </div>
     </div>
 
     <div style="display:flex; gap:10px; margin-top:10px;">
         <button style="flex:1; padding:12px; border-radius:8px; border:none; background:#eee;" onclick="closeSettings()">취소</button>
-        <button style="flex:1; padding:12px; border-radius:8px; border:none; background:#2563eb; color:white; font-weight:bold;" onclick="applySettings()">적용하기</button>
+        <button style="flex:1; padding:12px; border-radius:8px; border:none; background:#475569; color:white; font-weight:bold;" onclick="applySettings()">적용하기</button>
     </div>
   </div>
 </div>
 
 <div class="modal-bg hidden" id="share-modal-bg" onclick="closeShareModal()">
   <div class="modal" onclick="event.stopPropagation()">
-    <h3 style="margin-bottom:20px">📷 시간표 사진 전송</h3>
-    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합(나란히) 시간표 전송</button>
-    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('split')">분리(페이지 분할) 전송</button>
+    <h3 style="margin-bottom:20px; color:#475569;">📷 임시 시간표 전송</h3>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#475569; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 (나란히) 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('am')">오전 시간표 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
     <button style="width:100%; padding:14px; border-radius:8px; background:#e2e8f0; color:#4a5568; border:none;" onclick="closeShareModal()">닫기</button>
   </div>
 </div>
@@ -139,24 +141,16 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <script>
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 
-const fileName = window.location.pathname.split('/').pop() || 'default_101';
-let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
-
 const busNum = localStorage.getItem('busNumber') || '101';
-document.getElementById('appTitle').innerText = `${busNum}번 ${displayTitle}`;
+document.getElementById('appTitle').innerText = `${busNum}번 임시 시간표`;
 
-let STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
-if (busNum !== '101') { STORAGE_KEY = 'busData_v2_' + busNum + '_' + decodeURIComponent(fileName); }
+let STORAGE_KEY = 'bus101Data_v2_임시';
+if (busNum !== '101') { STORAGE_KEY = 'busData_v2_' + busNum + '_임시'; }
 
-window.addEventListener('DOMContentLoaded', () => {
-    const navLinks = { '배차시간표_평일.html': 'link-weekday', '배차시간표_토요일.html': 'link-saturday', '배차시간표_일요일.html': 'link-sunday', '배차시간표_방학.html': 'link-vacation', '배차시간표_임시.html': 'link-temp' };
-    const activeId = navLinks[decodeURIComponent(fileName)];
-    if (activeId) document.getElementById(activeId).classList.add('active');
-});
-
-// 임시 전용 (amTrip, pmTrip) + 차번호(busNames) 분리 설정 변수
 let busCount=16, ratio=0.525, amTrip=3, pmTrip=3, currentView='integrated';
-const deps={}, tts={}, busNames={};
+const deps={}, tts={};
+// 오전과 오후의 차량번호를 완전히 별도로 저장합니다.
+const busNamesAM={}, busNamesPM={};
 
 function loadData() {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -164,29 +158,22 @@ function loadData() {
         const parsed = JSON.parse(saved);
         busCount = parsed.busCount || 16;
         ratio = parsed.ratio || 0.525;
-        amTrip = parsed.amTrip !== undefined ? parsed.amTrip : (parsed.pmTrip ? parsed.pmTrip - 1 : 3);
-        pmTrip = parsed.pmTrip !== undefined ? parsed.pmTrip : (parsed.maxTrip ? parsed.maxTrip - amTrip : 3);
+        amTrip = parsed.amTrip || 3;
+        pmTrip = parsed.pmTrip || 3;
         Object.assign(deps, parsed.deps || {});
         Object.assign(tts, parsed.tts || {});
-        Object.assign(busNames, parsed.busNames || {});
+        Object.assign(busNamesAM, parsed.busNamesAM || {});
+        Object.assign(busNamesPM, parsed.busNamesPM || {});
     }
 }
 
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, amTrip, pmTrip, deps, tts, busNames })); }
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, amTrip, pmTrip, deps, tts, busNamesAM, busNamesPM })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
-function compute(){
-  const N=busCount, tot=N*(amTrip + pmTrip), seq=[]; 
-  for(let d=1;d<=tot;d++){
-    const trip=Math.floor((d-1)/N)+1, bus=((d-1)%N)+1;
-    const raw=deps[`${bus}-${trip}`];
-    const isS=typeof raw==='string'&&raw.toUpperCase()==='S';
-    const isA=raw!=null&&!isS&&pt(raw)!=null;
-    const val=isA?pt(raw):null;
-    const tt=tts[`${bus}-${trip}`];
-    seq.push({d,trip,bus,isS,isA,val,tt:tt!=null?Number(tt):null,act:!isS});
-  }
+// [핵심 1] 계산 엔진 완전히 독립 실행
+function processBlock(seq, startTrip) {
+  if (seq.length === 0) return;
   let cum=0; for(const s of seq){if(s.act)cum++;s.cum=cum;}
   const anc=seq.filter(s=>s.isA);
   for(const s of seq){
@@ -201,15 +188,18 @@ function compute(){
     s.ex=s.pa.val+(s.cum-s.pa.cum)/(s.na.cum-s.pa.cum)*(s.na.val-s.pa.val);
   }
   for(const s of seq){
-    if(s.trip<=1||s.d<=N){s.rest=null;continue;}
-    const p=seq[s.d-1-N];
+    if(s.trip <= startTrip){s.rest=null;continue;}
+    const p = seq.find(x => x.bus === s.bus && x.trip === s.trip - 1);
     if(!p||p.ex==null||p.ex==='S'||p.tt==null||s.ex==null||s.ex==='S'){s.rest=null;continue;}
     s.rest=s.ex-(p.ex+p.tt);
   }
   for(let i=0;i<seq.length;i++){
-    const pr=i>0&&seq[i-1].rest!=null?seq[i-1].rest:null;
-    const nr=i<seq.length-1&&seq[i+1].rest!=null?seq[i+1].rest:null;
-    seq[i].anr=pr!=null&&nr!=null?(pr+nr)/2:pr??nr??null;
+    const s = seq[i];
+    const p = seq.find(x => x.bus === s.bus && x.trip === s.trip - 1);
+    const n = seq.find(x => x.bus === s.bus && x.trip === s.trip + 1);
+    const pr = p && p.rest != null ? p.rest : null;
+    const nr = n && n.rest != null ? n.rest : null;
+    s.anr=pr!=null&&nr!=null?(pr+nr)/2:pr??nr??null;
   }
   for(const s of seq){
     if(s.isA||!s.act||!s.pa||!s.na||s.pa.cum===s.na.cum){s.ii=null;}
@@ -233,11 +223,32 @@ function compute(){
   }
   for(const s of seq){ if(s.fd!=null&&s.fd!=='S'&&s.tt!=null){s.mp=s.fd+s.tt*ratio;s.ar=s.fd+s.tt;} }
   for(const s of seq){
-    if(s.trip<=1||s.d<=N){s.dr=null;continue;}
-    const p=seq[s.d-1-N];
+    if(s.trip <= startTrip){s.dr=null;continue;}
+    const p = seq.find(x => x.bus === s.bus && x.trip === s.trip - 1);
     if(!p||p.fd==null||p.fd==='S'||p.tt==null||s.fd==null||s.fd==='S'){s.dr=null;continue;}
     s.dr=Math.round(s.fd-(p.fd+p.tt));
   }
+}
+
+function compute(){
+  const N=busCount, tot=N*(amTrip + pmTrip), seq=[]; 
+  for(let d=1;d<=tot;d++){
+    const trip=Math.floor((d-1)/N)+1, bus=((d-1)%N)+1;
+    const raw=deps[`${bus}-${trip}`];
+    const isS=typeof raw==='string'&&raw.toUpperCase()==='S';
+    const isA=raw!=null&&!isS&&pt(raw)!=null;
+    const val=isA?pt(raw):null;
+    const tt=tts[`${bus}-${trip}`];
+    seq.push({d,trip,bus,isS,isA,val,tt:tt!=null?Number(tt):null,act:!isS});
+  }
+  
+  // 오전과 오후를 완벽히 쪼개서 계산 (간섭 0%)
+  const amSeq = seq.filter(s => s.trip <= amTrip);
+  const pmSeq = seq.filter(s => s.trip > amTrip);
+  
+  processBlock(amSeq, 1);
+  processBlock(pmSeq, amTrip + 1);
+  
   return seq;
 }
 
@@ -248,7 +259,8 @@ function render(){
     document.getElementById('infobar').innerHTML=`<span>운행: <b>${busCount}</b>대</span><span>비율 <b>${ratio}</b></span><span>오전 <b>${amTrip}회</b> / 오후 <b>${pmTrip}회</b></span>`;
     const c=document.getElementById('content');
     if(currentView==='integrated') renderIntegrated(c);
-    else if(currentView==='split') renderSplit(c);
+    else if(currentView==='am') renderAM(c);
+    else if(currentView==='pm') renderPM(c);
     else renderInput(c);
     updatePrintContainer();
 }
@@ -259,30 +271,38 @@ function updatePrintContainer() {
     pc.innerHTML = '';
     if (currentView === 'input') { document.body.classList.remove('use-custom-print'); return; }
     document.body.classList.add('use-custom-print');
+    
+    // 현재 보고 있는 화면을 그대로 출력
     if (currentView === 'integrated') {
         const p = document.createElement('div'); p.className = 'custom-print-page';
         p.innerHTML = getScheduleHTML('integrated'); pc.appendChild(p);
-    } else if (currentView === 'split') {
+    } else if (currentView === 'am') {
         const p = document.createElement('div'); p.className = 'custom-print-page';
-        p.innerHTML = getScheduleHTML('split'); pc.appendChild(p);
+        p.innerHTML = getScheduleHTML('am'); pc.appendChild(p);
+    } else if (currentView === 'pm') {
+        const p = document.createElement('div'); p.className = 'custom-print-page';
+        p.innerHTML = getScheduleHTML('pm'); pc.appendChild(p);
     }
 }
 
-// [핵심] 차번호 직접 입력 실시간 동기화
-function syncBusName(el) {
+// [핵심 2] 오전/오후 차번호 따로 입력 동기화
+function syncBusName(el, period) {
     const b = el.dataset.bus;
-    busNames[b] = el.value;
-    document.querySelectorAll(`input[data-type="name"][data-bus="${b}"]`).forEach(inp => {
+    if (period === 'am') busNamesAM[b] = el.value;
+    else busNamesPM[b] = el.value;
+    
+    document.querySelectorAll(`input[data-type="name-${period}"][data-bus="${b}"]`).forEach(inp => {
         if(inp !== el) inp.value = el.value;
     });
     saveData();
 }
 
-function busRows(bus, slots, isInput) {
-    const bName = busNames[bus] || bus;
-    const inputNameHTML = `<input type="text" class="name-input" data-type="name" data-bus="${bus}" value="${busNames[bus] || ''}" placeholder="${bus}" oninput="syncBusName(this)">`;
+function busRows(bus, slots, isInput, period) {
+    const nameMap = period === 'am' ? busNamesAM : busNamesPM;
+    const bName = nameMap[bus] || '';
     
     if (isInput) {
+        const inputNameHTML = `<input type="text" class="name-input" data-type="name-${period}" data-bus="${bus}" value="${bName}" placeholder="${bus}호" oninput="syncBusName(this, '${period}')">`;
         let h = `<tr class="bus-start"><td class="seq fix-col">${inputNameHTML}</td>`;
         slots.forEach(s => {
             const t = s.trip;
@@ -293,7 +313,8 @@ function busRows(bus, slots, isInput) {
         h += `</tr>`;
         return h;
     } else {
-        let r1=`<td rowspan="3" class="seq fix-col">${bName}</td>`, r2='', r3='';
+        const displayNum = bName ? bName : bus;
+        let r1=`<td rowspan="3" class="seq fix-col">${displayNum}</td>`, r2='', r3='';
         slots.forEach((s,i)=>{
             const isS=s&&s.fd==='S'; 
             r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}">${s?fmt(s.fd):''}</td>`;
@@ -305,7 +326,11 @@ function busRows(bus, slots, isInput) {
     }
 }
 
-function thead(trips, isInput) {
+function thead(startTrip, endTrip, isInput) {
+    let trips = [];
+    for(let i=startTrip; i<=endTrip; i++) trips.push(i);
+    if(trips.length === 0) return '';
+
     let h='<tr><th class="fix-col">차번호</th>';
     if (isInput) {
         trips.forEach(t => { h+=`<th>${t}출발</th><th style="width:36px">운행</th>`; });
@@ -315,61 +340,61 @@ function thead(trips, isInput) {
     return `<thead>${h}</tr></thead>`;
 }
 
-function getTableHTML(startTrip, endTrip, isInput) {
+function getTableHTML(period, startTrip, endTrip, isInput) {
     let trips = [];
     for(let i=startTrip; i<=endTrip; i++) trips.push(i);
     if(trips.length === 0) return '';
+    
     let minW = isInput ? (trips.length * 18) : (trips.length * 16);
-    let h = `<table class="input-table" style="min-width:${Math.max(100, minW)}%">${thead(trips, isInput)}<tbody>`;
+    let h = `<table class="input-table" style="min-width:${Math.max(100, minW)}%">${thead(startTrip, endTrip, isInput)}<tbody>`;
     for(let b=1; b<=busCount; b++) {
         let slots = trips.map(t => gs(b, t));
-        h += busRows(b, slots, isInput);
+        h += busRows(b, slots, isInput, period);
     }
     h += `</tbody></table>`;
     return h;
 }
 
-// [오전 / 오후 나란히 보기] 
 function renderIntegrated(el){
     el.innerHTML = `
     <div style="display:flex; flex-direction:row; gap:15px; padding:8px; overflow-x:auto; width:100%;">
         <div style="flex:1; min-width:350px;">
             <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#1e40af; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오 전 ]</div>
-            ${getTableHTML(1, amTrip, false)}
+            ${getTableHTML('am', 1, amTrip, false)}
         </div>
         <div style="flex:1; min-width:350px;">
             <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#991b1b; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오 후 ]</div>
-            ${getTableHTML(amTrip+1, amTrip+pmTrip, false)}
+            ${getTableHTML('pm', amTrip+1, amTrip+pmTrip, false)}
         </div>
     </div>`;
 }
 
-// [오전 / 오후 위아래로 보기] 
-function renderSplit(el){
+function renderAM(el){
     el.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:20px; padding:8px; overflow-x:auto; width:100%;">
-        <div style="width:100%;">
-            <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#1e40af; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오 전 ]</div>
-            ${getTableHTML(1, amTrip, false)}
-        </div>
-        <div style="width:100%;">
-            <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#991b1b; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오 후 ]</div>
-            ${getTableHTML(amTrip+1, amTrip+pmTrip, false)}
-        </div>
+    <div style="padding:8px; overflow-x:auto; width:100%;">
+        <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#1e40af; background:#e2e8f0; padding:6px; border-radius:4px; max-width:800px; margin: 0 auto 5px auto;">[ 오 전 ]</div>
+        <div style="max-width:800px; margin:0 auto;">${getTableHTML('am', 1, amTrip, false)}</div>
     </div>`;
 }
 
-// [입력 시 오전/오후 나란히 입력 + 차번호 필드 생성]
+function renderPM(el){
+    el.innerHTML = `
+    <div style="padding:8px; overflow-x:auto; width:100%;">
+        <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#991b1b; background:#e2e8f0; padding:6px; border-radius:4px; max-width:800px; margin: 0 auto 5px auto;">[ 오 후 ]</div>
+        <div style="max-width:800px; margin:0 auto;">${getTableHTML('pm', amTrip+1, amTrip+pmTrip, false)}</div>
+    </div>`;
+}
+
 function renderInput(el){
     el.innerHTML = `
     <div style="display:flex; flex-direction:row; gap:15px; padding:8px; overflow-x:auto; width:100%;">
         <div style="flex:1; min-width:400px;">
             <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#1e40af; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오전 입력 ]</div>
-            ${getTableHTML(1, amTrip, true)}
+            ${getTableHTML('am', 1, amTrip, true)}
         </div>
         <div style="flex:1; min-width:400px;">
             <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#991b1b; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오후 입력 ]</div>
-            ${getTableHTML(amTrip+1, amTrip+pmTrip, true)}
+            ${getTableHTML('pm', amTrip+1, amTrip+pmTrip, true)}
         </div>
     </div>`;
 }
@@ -382,7 +407,7 @@ function onInput(el){
 }
 
 function switchView(v){
-    currentView=v; document.querySelectorAll('.tab').forEach((t,i)=>{ if(i<3) t.classList.toggle('active',['integrated','split','input'][i]===v); });
+    currentView=v; document.querySelectorAll('.tab').forEach((t,i)=>{ if(i<4) t.classList.toggle('active',['integrated','am','pm','input'][i]===v); });
     schedule=compute(); render();
 }
 
@@ -412,7 +437,7 @@ function exportData() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `백업_${busNum}번_${displayTitle}_${new Date().toLocaleDateString()}.json`; 
+    a.download = `백업_${busNum}번_임시_${new Date().toLocaleDateString()}.json`; 
     a.click();
 }
 
@@ -443,9 +468,8 @@ function getActualAmPmTrips() {
     return { maxAm: Math.min(amTrip, maxAm), maxPm: Math.min(pmTrip, maxPm) };
 }
 
-// [임시 전용 출력기: 나란히 & 위아래 페이지 분할]
 function getScheduleHTML(target) {
-    const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
+    const exportTitle = `${busNum}번 배차 시간표(임시)`;
     
     let subtitleText = `운행대수: ${busCount}대`;
     let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
@@ -457,7 +481,7 @@ function getScheduleHTML(target) {
     const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
     
     const actualTrips = getActualAmPmTrips();
-    let targetMax = target === 'integrated' ? actualTrips.maxAm + actualTrips.maxPm : Math.max(actualTrips.maxAm, actualTrips.maxPm);
+    let targetMax = target === 'integrated' ? actualTrips.maxAm + actualTrips.maxPm : (target === 'am' ? actualTrips.maxAm : actualTrips.maxPm);
 
     const fontScale = targetMax > 6 ? Math.max(0.65, 6 / targetMax) : 1;
     
@@ -507,7 +531,7 @@ function getScheduleHTML(target) {
 
     let tableHTML = `<style>${exportStyles}</style><div class="x-wrap" style="${styleVars}">`;
 
-    function getExportTable(title, startTrip, endTrip, titleColor) {
+    function getExportTable(period, title, startTrip, endTrip, titleColor) {
         let trips = [];
         for(let i=startTrip; i<=endTrip; i++) trips.push(i);
         if(trips.length === 0) return '';
@@ -519,7 +543,8 @@ function getScheduleHTML(target) {
         h += `</tr></thead><tbody>`;
         
         for(let b=1; b<=busCount; b++) {
-            const bName = busNames[b] || b;
+            const nameMap = period === 'am' ? busNamesAM : busNamesPM;
+            const bName = nameMap[b] || b;
             let slots = trips.map(t => gs(b, t));
             let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-seq">${bName}</td>`, r2 = '', r3 = '';
             slots.forEach(s => {
@@ -545,13 +570,16 @@ function getScheduleHTML(target) {
 
     if (target === 'integrated') {
         tableHTML += `<div style="display:flex; flex-direction:row; gap:15px; width:100%; justify-content:center;">`;
-        if(actualTrips.maxAm > 0) tableHTML += getExportTable('[ 오 전 ]', 1, actualTrips.maxAm, '#1e3a8a');
-        if(actualTrips.maxPm > 0) tableHTML += getExportTable('[ 오 후 ]', amTrip + 1, amTrip + actualTrips.maxPm, '#991b1b');
+        if(actualTrips.maxAm > 0) tableHTML += getExportTable('am', '[ 오 전 ]', 1, actualTrips.maxAm, '#1e3a8a');
+        if(actualTrips.maxPm > 0) tableHTML += getExportTable('pm', '[ 오 후 ]', amTrip + 1, amTrip + actualTrips.maxPm, '#991b1b');
         tableHTML += `</div>`;
-    } else if (target === 'split') {
+    } else if (target === 'am') {
         tableHTML += `<div style="display:flex; flex-direction:column; gap:20px; width:100%; align-items:center;">`;
-        if(actualTrips.maxAm > 0) tableHTML += `<div style="width:100%; page-break-after: always;">${getExportTable('[ 오 전 ]', 1, actualTrips.maxAm, '#1e3a8a')}</div>`;
-        if(actualTrips.maxPm > 0) tableHTML += `<div style="width:100%;">${getExportTable('[ 오 후 ]', amTrip + 1, amTrip + actualTrips.maxPm, '#991b1b')}</div>`;
+        if(actualTrips.maxAm > 0) tableHTML += `<div style="width:100%;">${getExportTable('am', '[ 오 전 ]', 1, actualTrips.maxAm, '#1e3a8a')}</div>`;
+        tableHTML += `</div>`;
+    } else if (target === 'pm') {
+        tableHTML += `<div style="display:flex; flex-direction:column; gap:20px; width:100%; align-items:center;">`;
+        if(actualTrips.maxPm > 0) tableHTML += `<div style="width:100%;">${getExportTable('pm', '[ 오 후 ]', amTrip + 1, amTrip + actualTrips.maxPm, '#991b1b')}</div>`;
         tableHTML += `</div>`;
     }
     
@@ -572,7 +600,7 @@ function showPCModal(dataUrl, fileName) {
                 <img src="${dataUrl}" style="max-width:100%; height:auto; display:block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
             </div>
             <div style="display:flex; gap:10px; width:100%;">
-                <a href="${dataUrl}" download="${fileName}" style="flex:1; padding:14px; background:#10b981; color:#fff; text-align:center; font-weight:bold; font-size:15px; text-decoration:none; border-radius:8px; transition:0.2s;">📥 내 컴퓨터에 파일로 저장</a>
+                <a href="${dataUrl}" download="${fileName}" style="flex:1; padding:14px; background:#10b981; color:#fff; text-align:center; font-weight:bold; font-size:15px; text-decoration:none; border-radius:8px; transition:0.2s;">📥 파일로 저장</a>
                 <button onclick="this.closest('.pc-modal-wrap').remove()" style="flex:1; padding:14px; background:#4a5568; color:#fff; font-weight:bold; font-size:15px; border:none; border-radius:8px; cursor:pointer; transition:0.2s;">닫기</button>
             </div>
         </div>
@@ -587,7 +615,11 @@ async function captureAndShare(target) {
     document.body.appendChild(loading);
 
     const actualTrips = getActualAmPmTrips();
-    let targetCols = target === 'integrated' ? (actualTrips.maxAm + actualTrips.maxPm) : Math.max(actualTrips.maxAm, actualTrips.maxPm);
+    let targetCols = 1;
+    if(target === 'integrated') targetCols = actualTrips.maxAm + actualTrips.maxPm;
+    else if(target === 'am') targetCols = actualTrips.maxAm;
+    else if(target === 'pm') targetCols = actualTrips.maxPm;
+
     const reqWidth = Math.max(794, targetCols * 140);
 
     const exportDiv = document.createElement('div');
@@ -603,7 +635,7 @@ async function captureAndShare(target) {
 
     const canvas = await html2canvas(exportDiv, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
-    const fileName = `${busNum}번_${displayTitle}_${target}.png`;
+    const fileName = `${busNum}번_임시_${target}.png`;
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
@@ -639,8 +671,13 @@ document.addEventListener('keydown', function(e) {
     if (currentView !== 'input') return;
     const target = e.target;
     if (target.tagName !== 'INPUT' || !target.closest('.input-table')) return;
-    const td = target.closest('td'), tr = target.closest('tr');
-    if (!td || !tr) return;
+    
+    // 테이블 내비게이션 로직 강화 (나란히 배치된 오전/오후 테이블 독립적 이동)
+    const table = target.closest('table');
+    const td = target.closest('td');
+    const tr = target.closest('tr');
+    if (!table || !td || !tr) return;
+    
     const cellIndex = Array.from(tr.children).indexOf(td);
     let nextInput = null;
 
