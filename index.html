@@ -29,6 +29,7 @@
     .btn-green { background: #38a169; } .btn-green:hover { background: #2f855a; }
     .btn-red { background: #e53e3e; } .btn-red:hover { background: #c53030; }
     .btn-purple { background: #805ad5; } .btn-purple:hover { background: #6b46c1; }
+    .btn-gray { background: #475569; } .btn-gray:hover { background: #334155; }
     .btn-outline { background: white; color: #4a5568; border: 2px solid #e2e8f0; margin-bottom: 20px; }
     .btn-outline:hover { background: #f7fafc; }
 </style>
@@ -49,6 +50,7 @@
     <button onclick="location.replace('배차시간표_토요일.html')" class="btn btn-green">토요일 배차시간표</button>
     <button onclick="location.replace('배차시간표_일요일.html')" class="btn btn-red">일요일 배차시간표</button>
     <button onclick="location.replace('배차시간표_방학.html')" class="btn btn-purple">방학 배차시간표</button>
+    <button onclick="location.replace('배차시간표_임시.html')" class="btn btn-gray">⚠️ 임시 배차시간표</button>
   </div>
 
   <script>
@@ -63,22 +65,15 @@
           localStorage.setItem('busNumber', document.getElementById('busNumInput').value || '101');
       }
 
-      // [핵심] 저장된 노선들을 올림차순으로 정렬하여 가져오는 함수
       function getSavedRoutes() {
           let routes = new Set(['101']); 
           for (let i = 0; i < localStorage.length; i++) {
               let key = localStorage.key(i);
-              // 일반 저장 패턴(v2)
               let match = key.match(/^busData_v2_(.+?)_배차시간표_/);
               if (match) routes.add(match[1]);
-              // 101번 전용 패턴
               if (key.startsWith('bus101Data_v2_')) routes.add('101');
           }
-          
-          // [수정] localeCompare를 사용하여 숫자와 문자가 섞여도 자연스럽게 올림차순 정렬
-          return Array.from(routes).sort((a, b) => 
-            a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
-          );
+          return Array.from(routes).sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
       }
 
       function toggleDropdown() {
@@ -131,7 +126,7 @@
                   saveBusNum();
               }
               alert('삭제되었습니다.');
-              toggleDropdown(); // 목록 갱신
+              toggleDropdown(); 
           }
       }
 
@@ -141,9 +136,7 @@
 
       document.addEventListener('click', function(event) {
           const wrapper = document.getElementById('inputWrapper');
-          if (!wrapper.contains(event.target)) {
-              hideDropdown();
-          }
+          if (!wrapper.contains(event.target)) hideDropdown();
       });
 
       function shareApp() {

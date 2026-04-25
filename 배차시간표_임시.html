@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+<title>버스 배차 관리(임시)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html { background-color: #e2e8f0; height: 100%; display: flex; justify-content: center; }
+body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:#f5f5f5; font-size:12px; -webkit-text-size-adjust:none; display:flex; flex-direction:column; height: 100%; width: 100%; max-width: 1000px; box-shadow: 0 0 20px rgba(0,0,0,0.15); overflow: hidden; margin: 0 auto; }
+
+.topbar { background:#fff; border-bottom:1px solid #ddd; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; z-index:20; box-shadow:0 1px 3px rgba(0,0,0,.08); flex-shrink:0; }
+.topbar h1 { font-size:14px; font-weight:bold; color: #2563eb; }
+.tabs { display:flex; gap:4px }
+.tab { padding:7px 10px; border-radius:8px; font-size:12px; font-weight:bold; border:none; cursor:pointer; background:#f0f0f0; color:#555; transition: 0.2s; }
+.tab.active { background:#2563eb; color:#fff }
+.tab.print-btn { background:#10b981; color:#fff; } 
+.tab.share-btn { background:#8b5cf6; color:#fff; }
+
+.quick-nav { display: flex; background: #fff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; align-items: center; }
+.quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
+.nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; flex-shrink:0; }
+.nav-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.nav-btn.home { background: #4a5568; color: #fff; border-color: #4a5568; }
+
+.infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
+.infobar b { font-weight:bold; color:#1e40af; }
+.content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
+
+/* 임시 버전 전용 (나란히 레이아웃, 차번호 입력칸 추가) */
+table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
+th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:4px 2px; font-size:11px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
+th.fix-col { left: 0; z-index: 12; border-right: 1px solid #9ca3af !important; width: 48px !important; }
+td.seq { font-weight:bold; background:#f8fafc !important; width:48px !important; position: sticky; left: 0; z-index: 5; border-right: 1px solid #9ca3af !important; }
+td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
+td.rest-bad { background:#fee2e2; color:#b91c1c }
+
+td.dep, td.arr { font-size: 12px; font-weight: 900; color: #1d4ed8; padding: 2px 0; }
+td.dep-s { color:#dc2626; font-weight:900; }
+td.tt, td.hj { font-size: 10.5px; font-weight: 800; letter-spacing: 0; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 2px 0; line-height: 1.2; }
+
+table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
+table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
+
+.input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:12px; font-weight:bold; padding:6px 2px; color:#1d4ed8; }
+.name-input { color:#0f172a !important; font-size:13px !important; background: transparent !important; }
+.name-input::placeholder { color: #94a3b8; font-weight: normal; }
+
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
+.modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
+.modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; text-align:left; }
+.modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
+.hidden { display:none }
+
+/* 브라우저 인쇄 버그 완벽 격리 */
+#print-container { display: none; }
+@media print {
+    html, body { height: 100% !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    body.use-custom-print > *:not(#print-container) { display: none !important; }
+    body.use-custom-print #print-container { display: block !important; width: 100%; background: #fff; }
+    @page { size: A4 portrait; margin: 0; }
+    .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
+    .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
+
+    .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
+    .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
+    .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
+    .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+    .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1 id="appTitle">배차 관리</h1>
+  <div class="tabs">
+    <button class="tab active" onclick="switchView('integrated')">통합</button>
+    <button class="tab" onclick="switchView('split')">분리</button>
+    <button class="tab" onclick="switchView('input')">입력</button>
+    <button class="tab share-btn" onclick="openShareModal()">📷 전송</button>
+    <button class="tab print-btn" onclick="triggerPrint()">🖨️</button> <button class="tab" onclick="openSettings()">⚙️</button>
+  </div>
+</div>
+
+<div class="quick-nav">
+  <button onclick="location.replace('index.html')" class="nav-btn home">🏠 홈</button>
+  <button onclick="location.replace('배차시간표_평일.html')" id="link-weekday" class="nav-btn">평일</button>
+  <button onclick="location.replace('배차시간표_토요일.html')" id="link-saturday" class="nav-btn">토요일</button>
+  <button onclick="location.replace('배차시간표_일요일.html')" id="link-sunday" class="nav-btn">일요일</button>
+  <button onclick="location.replace('배차시간표_방학.html')" id="link-vacation" class="nav-btn">방학</button>
+  <button onclick="location.replace('배차시간표_임시.html')" id="link-temp" class="nav-btn" style="background:#475569; color:#fff; border:none;">임시</button>
+</div>
+
+<div class="infobar" id="infobar"></div>
+<div class="content" id="content"></div>
+<div id="print-container"></div>
+
+<div class="modal-bg hidden" id="modal-bg" onclick="closeSettings()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 style="text-align:left;">⚙️ 배차 설정 및 백업 (임시)</h3><br>
+    <div class="modal-row"><label>운행대수</label><div><input id="s-bc" type="number">대</div></div>
+    <div class="modal-row"><label>회차지비율</label><input id="s-rt" type="text" style="width:80px"></div>
+    <div class="modal-row"><label style="color:#1e40af;">오전 횟수</label><div><input id="s-am" type="number" style="width:45px">회</div></div>
+    <div class="modal-row"><label style="color:#991b1b;">오후 횟수</label><div><input id="s-pm" type="number" style="width:45px">회</div></div>
+    
+    <div style="border-top:1px solid #eee; margin:15px 0; padding-top:15px;">
+        <p style="font-size:11px; color:#666; margin-bottom:10px; text-align:left;">⚠️ 업데이트 전 데이터를 백업하세요.</p>
+        <div style="display:flex; gap:8px;">
+            <button style="flex:1; padding:8px; font-size:11px; border-radius:6px; border:1px solid #2563eb; background:white; color:#2563eb;" onclick="exportData()">💾 데이터 백업</button>
+            <button style="flex:1; padding:8px; font-size:11px; border-radius:6px; border:1px solid #10b981; background:white; color:#10b981;" onclick="document.getElementById('importFile').click()">📂 데이터 복구</button>
+            <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(this)">
+        </div>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:10px;">
+        <button style="flex:1; padding:12px; border-radius:8px; border:none; background:#eee;" onclick="closeSettings()">취소</button>
+        <button style="flex:1; padding:12px; border-radius:8px; border:none; background:#2563eb; color:white; font-weight:bold;" onclick="applySettings()">적용하기</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="share-modal-bg" onclick="closeShareModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 style="margin-bottom:20px">📷 시간표 사진 전송</h3>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합(나란히) 시간표 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('split')">분리(페이지 분할) 전송</button>
+    <button style="width:100%; padding:14px; border-radius:8px; background:#e2e8f0; color:#4a5568; border:none;" onclick="closeShareModal()">닫기</button>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+
+const fileName = window.location.pathname.split('/').pop() || 'default_101';
+let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
+
+const busNum = localStorage.getItem('busNumber') || '101';
+document.getElementById('appTitle').innerText = `${busNum}번 ${displayTitle}`;
+
+let STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
+if (busNum !== '101') { STORAGE_KEY = 'busData_v2_' + busNum + '_' + decodeURIComponent(fileName); }
+
+window.addEventListener('DOMContentLoaded', () => {
+    const navLinks = { '배차시간표_평일.html': 'link-weekday', '배차시간표_토요일.html': 'link-saturday', '배차시간표_일요일.html': 'link-sunday', '배차시간표_방학.html': 'link-vacation', '배차시간표_임시.html': 'link-temp' };
+    const activeId = navLinks[decodeURIComponent(fileName)];
+    if (activeId) document.getElementById(activeId).classList.add('active');
+});
+
+// 임시 전용 (amTrip, pmTrip) + 차번호(busNames) 분리 설정 변수
+let busCount=16, ratio=0.525, amTrip=3, pmTrip=3, currentView='integrated';
+const deps={}, tts={}, busNames={};
+
+function loadData() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        busCount = parsed.busCount || 16;
+        ratio = parsed.ratio || 0.525;
+        amTrip = parsed.amTrip !== undefined ? parsed.amTrip : (parsed.pmTrip ? parsed.pmTrip - 1 : 3);
+        pmTrip = parsed.pmTrip !== undefined ? parsed.pmTrip : (parsed.maxTrip ? parsed.maxTrip - amTrip : 3);
+        Object.assign(deps, parsed.deps || {});
+        Object.assign(tts, parsed.tts || {});
+        Object.assign(busNames, parsed.busNames || {});
+    }
+}
+
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, amTrip, pmTrip, deps, tts, busNames })); }
+function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
+function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
+
+function compute(){
+  const N=busCount, tot=N*(amTrip + pmTrip), seq=[]; 
+  for(let d=1;d<=tot;d++){
+    const trip=Math.floor((d-1)/N)+1, bus=((d-1)%N)+1;
+    const raw=deps[`${bus}-${trip}`];
+    const isS=typeof raw==='string'&&raw.toUpperCase()==='S';
+    const isA=raw!=null&&!isS&&pt(raw)!=null;
+    const val=isA?pt(raw):null;
+    const tt=tts[`${bus}-${trip}`];
+    seq.push({d,trip,bus,isS,isA,val,tt:tt!=null?Number(tt):null,act:!isS});
+  }
+  let cum=0; for(const s of seq){if(s.act)cum++;s.cum=cum;}
+  const anc=seq.filter(s=>s.isA);
+  for(const s of seq){
+    s.pa=null;s.na=null;
+    for(let i=anc.length-1;i>=0;i--)if(anc[i].d<=s.d){s.pa=anc[i];break;}
+    for(let i=0;i<anc.length;i++)if(anc[i].d>=s.d){s.na=anc[i];break;}
+  }
+  for(const s of seq){
+    if(s.isS){s.ex='S';continue;}if(s.isA){s.ex=s.val;continue;}
+    if(!s.act||!s.pa||!s.na){s.ex=null;continue;}
+    if(s.pa.cum===s.na.cum){s.ex=s.pa.val;continue;}
+    s.ex=s.pa.val+(s.cum-s.pa.cum)/(s.na.cum-s.pa.cum)*(s.na.val-s.pa.val);
+  }
+  for(const s of seq){
+    if(s.trip<=1||s.d<=N){s.rest=null;continue;}
+    const p=seq[s.d-1-N];
+    if(!p||p.ex==null||p.ex==='S'||p.tt==null||s.ex==null||s.ex==='S'){s.rest=null;continue;}
+    s.rest=s.ex-(p.ex+p.tt);
+  }
+  for(let i=0;i<seq.length;i++){
+    const pr=i>0&&seq[i-1].rest!=null?seq[i-1].rest:null;
+    const nr=i<seq.length-1&&seq[i+1].rest!=null?seq[i+1].rest:null;
+    seq[i].anr=pr!=null&&nr!=null?(pr+nr)/2:pr??nr??null;
+  }
+  for(const s of seq){
+    if(s.isA||!s.act||!s.pa||!s.na||s.pa.cum===s.na.cum){s.ii=null;}
+    else{s.ii=(s.na.val-s.pa.val)/(s.na.cum-s.pa.cum);}
+    s.ifr=s.ii!=null?s.ii-Math.floor(s.ii):null;
+  }
+  let ce=0,pv=null;
+  for(const s of seq){
+    if(s.isA){s.fd=s.val;ce=0;pv=s.val;continue;}
+    if(s.isS){s.fd='S';continue;}
+    if(!s.act||s.ii==null||pv==null){s.fd=null;continue;} 
+    const tc=ce+s.ifr;
+    if(tc>=1){s.fd=pv+Math.floor(s.ii)+1;ce=tc-1;}
+    else if(tc>=.49&&tc<=.51){
+      if(s.rest!=null&&s.anr!=null){
+        if(s.rest<=s.anr){s.fd=pv+Math.floor(s.ii)+1;ce=tc-1;}
+        else{s.fd=pv+Math.floor(s.ii);ce=tc;}
+      }else{s.fd=pv+Math.round(s.ii);ce=tc>=1?tc-1:tc;}
+    }else{s.fd=pv+Math.floor(s.ii);ce=tc;}
+    pv=s.fd;
+  }
+  for(const s of seq){ if(s.fd!=null&&s.fd!=='S'&&s.tt!=null){s.mp=s.fd+s.tt*ratio;s.ar=s.fd+s.tt;} }
+  for(const s of seq){
+    if(s.trip<=1||s.d<=N){s.dr=null;continue;}
+    const p=seq[s.d-1-N];
+    if(!p||p.fd==null||p.fd==='S'||p.tt==null||s.fd==null||s.fd==='S'){s.dr=null;continue;}
+    s.dr=Math.round(s.fd-(p.fd+p.tt));
+  }
+  return seq;
+}
+
+let schedule;
+const gs=(b,t)=>schedule.find(s=>s.bus===b&&s.trip===t);
+
+function render(){
+    document.getElementById('infobar').innerHTML=`<span>운행: <b>${busCount}</b>대</span><span>비율 <b>${ratio}</b></span><span>오전 <b>${amTrip}회</b> / 오후 <b>${pmTrip}회</b></span>`;
+    const c=document.getElementById('content');
+    if(currentView==='integrated') renderIntegrated(c);
+    else if(currentView==='split') renderSplit(c);
+    else renderInput(c);
+    updatePrintContainer();
+}
+
+function updatePrintContainer() {
+    let pc = document.getElementById('print-container');
+    if (!pc) return;
+    pc.innerHTML = '';
+    if (currentView === 'input') { document.body.classList.remove('use-custom-print'); return; }
+    document.body.classList.add('use-custom-print');
+    if (currentView === 'integrated') {
+        const p = document.createElement('div'); p.className = 'custom-print-page';
+        p.innerHTML = getScheduleHTML('integrated'); pc.appendChild(p);
+    } else if (currentView === 'split') {
+        const p = document.createElement('div'); p.className = 'custom-print-page';
+        p.innerHTML = getScheduleHTML('split'); pc.appendChild(p);
+    }
+}
+
+// [핵심] 차번호 직접 입력 실시간 동기화
+function syncBusName(el) {
+    const b = el.dataset.bus;
+    busNames[b] = el.value;
+    document.querySelectorAll(`input[data-type="name"][data-bus="${b}"]`).forEach(inp => {
+        if(inp !== el) inp.value = el.value;
+    });
+    saveData();
+}
+
+function busRows(bus, slots, isInput) {
+    const bName = busNames[bus] || bus;
+    const inputNameHTML = `<input type="text" class="name-input" data-type="name" data-bus="${bus}" value="${busNames[bus] || ''}" placeholder="${bus}" oninput="syncBusName(this)">`;
+    
+    if (isInput) {
+        let h = `<tr class="bus-start"><td class="seq fix-col">${inputNameHTML}</td>`;
+        slots.forEach(s => {
+            const t = s.trip;
+            const dk=`${bus}-${t}`, dv=deps[dk]||'', tv=tts[dk]||'';
+            h+=`<td><input class="${dv.toUpperCase()==='S'?'s-val':''}" value="${dv}" data-type="dep" data-bus="${bus}" data-trip="${t}" onblur="onInput(this)"></td>`;
+            h+=`<td><input value="${tv}" data-type="tt" data-bus="${bus}" data-trip="${t}" onblur="onInput(this)"></td>`;
+        });
+        h += `</tr>`;
+        return h;
+    } else {
+        let r1=`<td rowspan="3" class="seq fix-col">${bName}</td>`, r2='', r3='';
+        slots.forEach((s,i)=>{
+            const isS=s&&s.fd==='S'; 
+            r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}">${s?fmt(s.fd):''}</td>`;
+            if(i<slots.length-1){ const ns=slots[i+1]; r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}">${ns&&ns.dr!=null?ns.dr:''}</td>`; }
+            r2+=`<td class="tt">${s&&s.tt||''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
+            r3+=`<td colspan="2" class="arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
+        });
+        return `<tr class="bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>`;
+    }
+}
+
+function thead(trips, isInput) {
+    let h='<tr><th class="fix-col">차번호</th>';
+    if (isInput) {
+        trips.forEach(t => { h+=`<th>${t}출발</th><th style="width:36px">운행</th>`; });
+    } else {
+        trips.forEach((t,i)=>{ h+=`<th colspan="2">${t}회</th>`; if(i<trips.length-1) h+=`<th style="width:28px">휴식</th>`; });
+    }
+    return `<thead>${h}</tr></thead>`;
+}
+
+function getTableHTML(startTrip, endTrip, isInput) {
+    let trips = [];
+    for(let i=startTrip; i<=endTrip; i++) trips.push(i);
+    if(trips.length === 0) return '';
+    let minW = isInput ? (trips.length * 18) : (trips.length * 16);
+    let h = `<table class="input-table" style="min-width:${Math.max(100, minW)}%">${thead(trips, isInput)}<tbody>`;
+    for(let b=1; b<=busCount; b++) {
+        let slots = trips.map(t => gs(b, t));
+        h += busRows(b, slots, isInput);
+    }
+    h += `</tbody></table>`;
+    return h;
+}
+
+// [오전 / 오후 나란히 보기] 
+function renderIntegrated(el){
+    el.innerHTML = `
+    <div style="display:flex; flex-direction:row; gap:15px; padding:8px; overflow-x:auto; width:100%;">
+        <div style="flex:1; min-width:350px;">
+            <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#1e40af; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오 전 ]</div>
+            ${getTableHTML(1, amTrip, false)}
+        </div>
+        <div style="flex:1; min-width:350px;">
+            <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#991b1b; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오 후 ]</div>
+            ${getTableHTML(amTrip+1, amTrip+pmTrip, false)}
+        </div>
+    </div>`;
+}
+
+// [오전 / 오후 위아래로 보기] 
+function renderSplit(el){
+    el.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:20px; padding:8px; overflow-x:auto; width:100%;">
+        <div style="width:100%;">
+            <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#1e40af; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오 전 ]</div>
+            ${getTableHTML(1, amTrip, false)}
+        </div>
+        <div style="width:100%;">
+            <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#991b1b; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오 후 ]</div>
+            ${getTableHTML(amTrip+1, amTrip+pmTrip, false)}
+        </div>
+    </div>`;
+}
+
+// [입력 시 오전/오후 나란히 입력 + 차번호 필드 생성]
+function renderInput(el){
+    el.innerHTML = `
+    <div style="display:flex; flex-direction:row; gap:15px; padding:8px; overflow-x:auto; width:100%;">
+        <div style="flex:1; min-width:400px;">
+            <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#1e40af; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오전 입력 ]</div>
+            ${getTableHTML(1, amTrip, true)}
+        </div>
+        <div style="flex:1; min-width:400px;">
+            <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#991b1b; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오후 입력 ]</div>
+            ${getTableHTML(amTrip+1, amTrip+pmTrip, true)}
+        </div>
+    </div>`;
+}
+
+function onInput(el){
+    const b=el.dataset.bus, t=el.dataset.trip, v=el.value.trim();
+    if(el.dataset.type==='dep'){ if(!v) delete deps[`${b}-${t}`]; else deps[`${b}-${t}`]=v; }
+    else { if(!v) delete tts[`${b}-${t}`]; else tts[`${b}-${t}`]=v; }
+    saveData(); schedule=compute();
+}
+
+function switchView(v){
+    currentView=v; document.querySelectorAll('.tab').forEach((t,i)=>{ if(i<3) t.classList.toggle('active',['integrated','split','input'][i]===v); });
+    schedule=compute(); render();
+}
+
+function openSettings(){
+    document.getElementById('s-bc').value=busCount; 
+    document.getElementById('s-rt').value=ratio;
+    document.getElementById('s-am').value=amTrip; 
+    document.getElementById('s-pm').value=pmTrip;
+    document.getElementById('modal-bg').classList.remove('hidden');
+}
+function closeSettings(){document.getElementById('modal-bg').classList.add('hidden');}
+function applySettings(){
+    busCount=Number(document.getElementById('s-bc').value); 
+    ratio=Number(document.getElementById('s-rt').value);
+    amTrip=Number(document.getElementById('s-am').value) || 3; 
+    pmTrip=Number(document.getElementById('s-pm').value) || 3;
+    closeSettings(); saveData(); schedule=compute(); render();
+}
+
+function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
+function closeShareModal() { document.getElementById('share-modal-bg').classList.add('hidden'); }
+
+function exportData() {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) { alert("저장된 데이터가 없습니다."); return; }
+    const blob = new Blob([data], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `백업_${busNum}번_${displayTitle}_${new Date().toLocaleDateString()}.json`; 
+    a.click();
+}
+
+function importData(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            alert("데이터가 성공적으로 복구되었습니다. 화면을 새로고침합니다.");
+            location.reload();
+        } catch(err) { alert("올바른 백업 파일이 아닙니다."); }
+    };
+    reader.readAsText(file);
+}
+
+function getActualAmPmTrips() {
+    let maxAm = 1, maxPm = 1;
+    const checkKey = (k) => {
+        let [b, t] = k.split('-').map(Number);
+        if (t <= amTrip) maxAm = Math.max(maxAm, t);
+        else maxPm = Math.max(maxPm, t - amTrip);
+    };
+    for (let k in deps) { if (deps[k] && String(deps[k]).trim() !== '') checkKey(k); }
+    for (let k in tts) { if (tts[k] && String(tts[k]).trim() !== '') checkKey(k); }
+    return { maxAm: Math.min(amTrip, maxAm), maxPm: Math.min(pmTrip, maxPm) };
+}
+
+// [임시 전용 출력기: 나란히 & 위아래 페이지 분할]
+function getScheduleHTML(target) {
+    const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
+    
+    let subtitleText = `운행대수: ${busCount}대`;
+    let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:center; margin-bottom:10px; font-size:16px; font-weight:bold; color:#333;">${subtitleText}</div>`;
+
+    let hasAnyTT = false;
+    for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
+
+    const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
+    
+    const actualTrips = getActualAmPmTrips();
+    let targetMax = target === 'integrated' ? actualTrips.maxAm + actualTrips.maxPm : Math.max(actualTrips.maxAm, actualTrips.maxPm);
+
+    const fontScale = targetMax > 6 ? Math.max(0.65, 6 / targetMax) : 1;
+    
+    let fsSeq, fsDep, fsSub;
+    if (hasAnyTT) {
+        fsSeq = (exactCellHeight * 0.8) * fontScale;  
+        fsDep = (exactCellHeight * 0.78) * fontScale;
+        fsSub = (exactCellHeight * 0.72) * fontScale; 
+    } else {
+        fsSeq = Math.min(22, exactCellHeight * 0.7) * fontScale;  
+        fsDep = Math.min(20, exactCellHeight * 0.6) * fontScale;  
+        fsSub = 14 * fontScale;  
+    }
+
+    const styleVars = `
+        --cell-height: ${exactCellHeight}px;
+        --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px;
+        --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px;
+        --fs-seq: ${fsSeq}px;
+        --fs-dep: ${fsDep}px;
+        --fs-sub: ${fsSub}px;
+        --fs-s-big: ${fsDep * 2}px;
+        --fs-s-small: ${fsDep * 1.4}px;
+    `;
+
+    let exportStyles = `
+        .x-wrap { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
+        .x-wrap * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        
+        .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
+        
+        .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:800; height:var(--th-height); color:#0f172a; }
+        .x-th-seq { border-right: 1px solid #9ca3af !important; width: 50px; }
+        
+        .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+        
+        .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
+        .x-dep { font-size:var(--fs-dep); font-weight:900; color:#1d4ed8; }
+        .x-arr { font-size:var(--fs-dep); font-weight:900; color:#0f766e; } 
+        .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
+        .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:900; } 
+        
+        .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
+        
+        .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
+    `;
+
+    let tableHTML = `<style>${exportStyles}</style><div class="x-wrap" style="${styleVars}">`;
+
+    function getExportTable(title, startTrip, endTrip, titleColor) {
+        let trips = [];
+        for(let i=startTrip; i<=endTrip; i++) trips.push(i);
+        if(trips.length === 0) return '';
+        
+        let h = `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">`;
+        h += `<div class="x-title-box" style="color:${titleColor};">${title}</div>`;
+        h += `<table class="x-table"><thead><tr><th class="x-th x-th-seq">차번호</th>`;
+        trips.forEach(t => { h += `<th class="x-th" colspan="2">${t}회</th>`; });
+        h += `</tr></thead><tbody>`;
+        
+        for(let b=1; b<=busCount; b++) {
+            const bName = busNames[b] || b;
+            let slots = trips.map(t => gs(b, t));
+            let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-seq">${bName}</td>`, r2 = '', r3 = '';
+            slots.forEach(s => {
+                const isS = s && s.fd === 'S';
+                const dep = s ? fmt(s.fd) : '';
+                if (hasAnyTT) {
+                    if (isS) r1 += `<td colspan="2" rowspan="3" class="x-td x-deps" style="font-size:var(--fs-s-big); border-bottom: 1px solid #cbd5e1;">S</td>`;
+                    else {
+                        r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`;
+                        r2 += `<td class="x-td x-tt">${s&&s.tt?s.tt:''}</td><td class="x-td x-hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
+                        r3 += `<td colspan="2" class="x-td x-arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
+                    }
+                } else { 
+                    if (isS) r1 += `<td colspan="2" class="x-td x-deps" style="font-size:var(--fs-s-small);">S</td>`;
+                    else r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`; 
+                }
+            });
+            h += hasAnyTT ? `<tr class="x-bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="x-bus-start">${r1}</tr>`;
+        }
+        h += `</tbody></table></div>`;
+        return h;
+    }
+
+    if (target === 'integrated') {
+        tableHTML += `<div style="display:flex; flex-direction:row; gap:15px; width:100%; justify-content:center;">`;
+        if(actualTrips.maxAm > 0) tableHTML += getExportTable('[ 오 전 ]', 1, actualTrips.maxAm, '#1e3a8a');
+        if(actualTrips.maxPm > 0) tableHTML += getExportTable('[ 오 후 ]', amTrip + 1, amTrip + actualTrips.maxPm, '#991b1b');
+        tableHTML += `</div>`;
+    } else if (target === 'split') {
+        tableHTML += `<div style="display:flex; flex-direction:column; gap:20px; width:100%; align-items:center;">`;
+        if(actualTrips.maxAm > 0) tableHTML += `<div style="width:100%; page-break-after: always;">${getExportTable('[ 오 전 ]', 1, actualTrips.maxAm, '#1e3a8a')}</div>`;
+        if(actualTrips.maxPm > 0) tableHTML += `<div style="width:100%;">${getExportTable('[ 오 후 ]', amTrip + 1, amTrip + actualTrips.maxPm, '#991b1b')}</div>`;
+        tableHTML += `</div>`;
+    }
+    
+    return contentHTML + tableHTML + `</div>`;
+}
+
+function showPCModal(dataUrl, fileName) {
+    const modal = document.createElement('div');
+    modal.className = "pc-modal-wrap";
+    modal.style = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px;";
+    modal.innerHTML = `
+        <div style="background:#fff; padding:20px; border-radius:12px; width:95%; max-width:800px; max-height:95vh; display:flex; flex-direction:column; align-items:center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <h3 style="margin:0 0 10px 0; color:#1e40af; font-size:18px;">✅ 시간표 생성 완료!</h3>
+            <p id="copyMsg" style="margin:0 0 15px 0; font-weight:bold; color:#e53e3e; text-align:center; font-size:14px; background:#fff5f5; padding:10px; border-radius:8px; border:1px solid #fed7d7; width:100%;">
+                카카오톡 채팅창에 대고 <b>[ Ctrl + V ] (붙여넣기)</b> 하시면 바로 전송됩니다!
+            </p>
+            <div style="flex:1; overflow:auto; border:2px dashed #cbd5e0; border-radius:8px; margin-bottom:15px; width:100%; display:flex; justify-content:center; background:#f8fafc; padding:10px;">
+                <img src="${dataUrl}" style="max-width:100%; height:auto; display:block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+            </div>
+            <div style="display:flex; gap:10px; width:100%;">
+                <a href="${dataUrl}" download="${fileName}" style="flex:1; padding:14px; background:#10b981; color:#fff; text-align:center; font-weight:bold; font-size:15px; text-decoration:none; border-radius:8px; transition:0.2s;">📥 내 컴퓨터에 파일로 저장</a>
+                <button onclick="this.closest('.pc-modal-wrap').remove()" style="flex:1; padding:14px; background:#4a5568; color:#fff; font-weight:bold; font-size:15px; border:none; border-radius:8px; cursor:pointer; transition:0.2s;">닫기</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function captureAndShare(target) {
+    closeShareModal();
+    const loading = document.createElement('div');
+    loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">이미지 생성 중...</div>';
+    document.body.appendChild(loading);
+
+    const actualTrips = getActualAmPmTrips();
+    let targetCols = target === 'integrated' ? (actualTrips.maxAm + actualTrips.maxPm) : Math.max(actualTrips.maxAm, actualTrips.maxPm);
+    const reqWidth = Math.max(794, targetCols * 140);
+
+    const exportDiv = document.createElement('div');
+    exportDiv.style.width = `${reqWidth}px`; 
+    exportDiv.style.padding = '40px 30px';
+    exportDiv.style.backgroundColor = '#fff'; 
+    exportDiv.style.position = 'absolute'; 
+    exportDiv.style.left = '-9999px';
+    exportDiv.style.display = 'flex'; 
+    exportDiv.style.flexDirection = 'column';
+    exportDiv.innerHTML = getScheduleHTML(target);
+    document.body.appendChild(exportDiv);
+
+    const canvas = await html2canvas(exportDiv, { scale: 2 });
+    const imgData = canvas.toDataURL('image/png');
+    const fileName = `${busNum}번_${displayTitle}_${target}.png`;
+
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    function cleanup() { document.body.removeChild(exportDiv); document.body.removeChild(loading); }
+
+    if (isMobile && navigator.canShare) {
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], fileName, { type: 'image/png' });
+            try { await navigator.share({ files: [file], title: fileName }); } 
+            catch (e) { showPCModal(imgData, fileName); }
+            cleanup();
+        });
+    } else {
+        showPCModal(imgData, fileName);
+        canvas.toBlob(async (blob) => {
+            try {
+                const item = new ClipboardItem({ 'image/png': blob });
+                await navigator.clipboard.write([item]);
+            } catch(e) {
+                document.getElementById('copyMsg').innerHTML = '아래 사진에 <b>마우스 우클릭 -> [이미지 복사]</b> 후 카톡에 붙여넣기 하세요.';
+            }
+            cleanup();
+        });
+    }
+}
+
+function triggerPrint() {
+    updatePrintContainer(); 
+    setTimeout(() => { window.print(); }, 500); 
+}
+
+document.addEventListener('keydown', function(e) {
+    if (currentView !== 'input') return;
+    const target = e.target;
+    if (target.tagName !== 'INPUT' || !target.closest('.input-table')) return;
+    const td = target.closest('td'), tr = target.closest('tr');
+    if (!td || !tr) return;
+    const cellIndex = Array.from(tr.children).indexOf(td);
+    let nextInput = null;
+
+    if (e.key === 'ArrowUp') {
+        e.preventDefault(); 
+        const prevTr = tr.previousElementSibling;
+        if (prevTr) nextInput = prevTr.children[cellIndex]?.querySelector('input');
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        e.preventDefault();
+        const nextTr = tr.nextElementSibling;
+        if (nextTr) nextInput = nextTr.children[cellIndex]?.querySelector('input');
+    } else if (e.key === 'ArrowLeft') {
+        if (target.selectionStart === 0 && target.selectionEnd === 0) {
+            e.preventDefault();
+            let prevTd = td.previousElementSibling;
+            while (prevTd && !prevTd.querySelector('input')) prevTd = prevTd.previousElementSibling;
+            if (prevTd) nextInput = prevTd.querySelector('input');
+        }
+    } else if (e.key === 'ArrowRight') {
+        if (target.selectionStart === target.value.length && target.selectionEnd === target.value.length) {
+            e.preventDefault();
+            let nextTd = td.nextElementSibling;
+            while (nextTd && !nextTd.querySelector('input')) nextTd = nextTd.nextElementSibling;
+            if (nextTd) nextInput = nextTd.querySelector('input');
+        }
+    }
+    if (nextInput) { nextInput.focus(); nextInput.select(); }
+});
+
+loadData(); schedule=compute(); render();
+</script>
+</body>
+</html>
