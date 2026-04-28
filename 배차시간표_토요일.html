@@ -46,7 +46,7 @@ td.tt, td.hj { font-size: 9.5px; font-weight: 800; letter-spacing: -0.5px; color
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 
-/* 얇고 샤프한 1.5px 빨간색 구분선 설정 (사진 및 앱 화면용) */
+/* 얇고 세련된 1.5px 빨간색 구분선 설정 */
 table td.div-left { border-left: 1.5px solid #ef4444 !important; }
 table tbody tr.bus-start td.div-top { border-top: 1.5px solid #ef4444 !important; }
 
@@ -73,10 +73,6 @@ table tbody tr.bus-start td.div-top { border-top: 1.5px solid #ef4444 !important
     .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
     .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
     .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
-    
-    /* 🚨 [핵심 해결] 빨간색 가로선과 회색 그림자가 겹쳐 찌그러지는 현상 완벽 제거 🚨 */
-    /* 빨간선이 들어가는 곳은 그림자를 아예 삭제하여 가장 깨끗한 1.5px 빨간 선만 출력시킵니다 */
-    .x-table tr.x-bus-start > td.x-div-top { box-shadow: none !important; }
 }
 </style>
 </head>
@@ -490,7 +486,7 @@ function getScheduleHTML(target) {
         
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
-        /* 🚨 사진 전송용 빨간선 (1.5px 적용) */
+        /* 🚨 사진 전송용 빨간선 (1.5px로 얇고 깔끔하게) */
         .x-table td.x-div-left { border-left: 1.5px solid #ef4444 !important; }
         .x-table tr.x-bus-start > td.x-div-top { border-top: 1.5px solid #ef4444 !important; }
         .x-table tr.x-bus-start > td.x-div-left.x-div-top { border-left: 1.5px solid #ef4444 !important; border-top: 1.5px solid #ef4444 !important; }
@@ -498,26 +494,42 @@ function getScheduleHTML(target) {
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
         .x-title-box.pm { color:#991b1b; }
 
-        /* 🚨 [핵심 해결] 인쇄 전용 설정 🚨 */
+        /* 🚨 [핵심 해결] 인쇄 전용 설정 (프린터 잉크 절약 무력화) 🚨 */
         @media print {
             .x-wrap {
+                /* 배율을 1.02배로 고정하여 A4 하단이 잘리지 않게 함 */
                 --cell-height: ${exactCellHeight * 1.02}px !important;
                 --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.02}px !important;
                 --fs-seq: ${fsSeq * 1.05}px !important;
-                /* 모든 시간 폰트 딱 1% 더 키움 (1.06배) */
-                --fs-dep: ${fsDep * 1.06}px !important;
-                --fs-sub: ${fsSub * 1.06}px !important;
-                --fs-s-big: ${fsDep * 2 * 1.06}px !important;
-                --fs-s-small: ${fsDep * 1.4 * 1.06}px !important;
+                
+                /* [글자 크기 미세 확대] 시간 글자들만 아주 아주 조금만(+1%) 더 키움 (1.05배 -> 1.085배) */
+                --fs-dep: ${fsDep * 1.085}px !important;
+                --fs-sub: ${fsSub * 1.085}px !important;
+                --fs-s-big: ${fsDep * 2 * 1.085}px !important;
+                --fs-s-small: ${fsDep * 1.4 * 1.085}px !important;
             }
 
             .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
             .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
             .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
 
-            /* 🚨 가로 빨간선이 회색선에게 먹히는 버그 완벽 차단! 회색선 무력화! */
-            .x-table tr.x-bus-start > td.x-div-top { box-shadow: none !important; }
-            .x-table tr.x-bus-start > td.x-div-left.x-div-top { box-shadow: none !important; }
+            /* 🚨 프린터가 빨간선을 지우는 것 100% 방어 (2px 굵기 + z-index + position) 🚨 */
+            .x-table td.x-div-left { 
+                border-left: 2px solid #ef4444 !important; 
+                box-shadow: inset 1px 0 0 0 #ef4444 !important; 
+                position: relative !important; z-index: 10 !important; 
+            }
+            .x-table tr.x-bus-start > td.x-div-top { 
+                border-top: 2px solid #ef4444 !important; 
+                box-shadow: inset 0 1px 0 0 #ef4444 !important; 
+                position: relative !important; z-index: 10 !important; 
+            }
+            .x-table tr.x-bus-start > td.x-div-left.x-div-top { 
+                border-left: 2px solid #ef4444 !important; 
+                border-top: 2px solid #ef4444 !important; 
+                box-shadow: inset 1px 1px 0 0 #ef4444 !important; 
+                position: relative !important; z-index: 10 !important; 
+            }
         }
     `;
 
@@ -547,7 +559,7 @@ function getScheduleHTML(target) {
             
             if (hasAnyTT) {
                 if (isS) {
-                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-big); border-bottom: 1px solid #cbd5e1;">S</td>`;
+                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps${clsL}${clsT}" style="border-bottom: 1px solid #cbd5e1;">S</td>`;
                 } else {
                     r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`;
                     r2 += `<td class="x-td x-tt${clsL}">${s&&s.tt?s.tt:''}</td><td class="x-td x-hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
@@ -555,7 +567,7 @@ function getScheduleHTML(target) {
                 }
             } else { 
                 if (isS) {
-                    r1 += `<td colspan="2" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-small);">S</td>`;
+                    r1 += `<td colspan="2" class="x-td x-deps${clsL}${clsT}">S</td>`;
                 } else {
                     r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`; 
                 }

@@ -493,6 +493,8 @@ function getScheduleHTML(target) {
         fsSub = 14 * fontScale;  
     }
 
+    const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
+
     const styleVars = `
         --cell-height: ${exactCellHeight}px;
         --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px;
@@ -525,7 +527,7 @@ function getScheduleHTML(target) {
         
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
 
-        /* [수정] 임시 파일 인쇄 배율을 1.02배로 최적화하여 잘림 방지 (글자는 약 3.5% 미세 확대) */
+        /* [수정] 임시 파일 인쇄 배율을 1.02배로 최적화하여 잘림 방지 및 시간 폰트만 미세 확대(1.085배) */
         @media print {
             .x-wrap {
                 --cell-height: ${exactCellHeight * 1.02}px !important;
