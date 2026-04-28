@@ -129,7 +129,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <div class="modal-bg hidden" id="share-modal-bg" onclick="closeShareModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 style="margin-bottom:20px; color:#475569;">📷 임시 시간표 전송</h3>
-    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 (나란히) 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#475569; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 (나란히) 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('am')">오전 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
     <button style="width:100%; padding:14px; border-radius:8px; background:#e2e8f0; color:#4a5568; border:none;" onclick="closeShareModal()">닫기</button>
@@ -322,6 +322,7 @@ function busRows(bus, slots, isInput, period) {
     }
 }
 
+// [핵심] 화면 표의 헤더를 무조건 1부터 N까지 새로 표시
 function thead(startTrip, endTrip, isInput) {
     let trips = [];
     for(let i=startTrip; i<=endTrip; i++) trips.push(i);
@@ -329,9 +330,9 @@ function thead(startTrip, endTrip, isInput) {
 
     let h='<tr><th class="fix-col">차번호</th>';
     if (isInput) {
-        trips.forEach(t => { h+=`<th>${t}출발</th><th style="width:36px">운행</th>`; });
+        trips.forEach((t, i) => { h+=`<th>${i+1}출발</th><th style="width:36px">운행</th>`; });
     } else {
-        trips.forEach((t,i)=>{ h+=`<th colspan="2">${t}회</th>`; if(i<trips.length-1) h+=`<th style="width:28px">휴식</th>`; });
+        trips.forEach((t, i)=>{ h+=`<th colspan="2">${i+1}회</th>`; if(i<trips.length-1) h+=`<th style="width:28px">휴식</th>`; });
     }
     return `<thead>${h}</tr></thead>`;
 }
@@ -523,22 +524,37 @@ function getScheduleHTML(target) {
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
-        
-        /* [인쇄 전용 폰트/칸 뻥튀기] 사진에는 영향 X, 인쇄 시에만 글자와 칸을 대폭 확대! */
+
+        /* [수정] 임시 파일 인쇄 시 1.05배 확대 (잘림 방지) */
         @media print {
             .x-wrap {
-                --cell-height: ${exactCellHeight * 1.22}px !important;
-                --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.2}px !important;
-                --fs-seq: ${fsSeq * 1.15}px !important;
-                --fs-dep: ${fsDep * 1.35}px !important;
-                --fs-sub: ${fsSub * 1.45}px !important;
-                --fs-s-big: ${fsDep * 2 * 1.2}px !important;
-                --fs-s-small: ${fsDep * 1.4 * 1.2}px !important;
+                --cell-height: ${exactCellHeight * 1.05}px !important;
+                --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.05}px !important;
+                --fs-seq: ${fsSeq * 1.05}px !important;
+                --fs-dep: ${fsDep * 1.15}px !important;
+                --fs-sub: ${fsSub * 1.25}px !important;
+                --fs-s-big: ${fsDep * 2 * 1.1}px !important;
+                --fs-s-small: ${fsDep * 1.4 * 1.1}px !important;
             }
+
+            .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
+            .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
+            .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
+            .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+            .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
         }
     `;
 
     let tableHTML = `<style>${exportStyles}</style><div class="x-wrap" style="${styleVars}">`;
+
+    // [핵심] 내보내기 헤더도 반드시 1부터 N으로 독립 표기
+    function getExportThead(startTrip, endTrip) {
+        let trips = [];
+        for(let i=startTrip; i<=endTrip; i++) trips.push(i);
+        let h = `<tr><th class="x-th x-th-seq">차번호</th>`;
+        trips.forEach((t, i) => { h += `<th class="x-th" colspan="2">${i+1}회</th>`; });
+        return `<thead>${h}</tr></thead>`;
+    }
 
     function getExportTable(period, title, startTrip, endTrip, titleColor) {
         let trips = [];
@@ -547,9 +563,7 @@ function getScheduleHTML(target) {
         
         let h = `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">`;
         h += `<div class="x-title-box" style="color:${titleColor};">${title}</div>`;
-        h += `<table class="x-table"><thead><tr><th class="x-th x-th-seq">차번호</th>`;
-        trips.forEach(t => { h += `<th class="x-th" colspan="2">${t}회</th>`; });
-        h += `</tr></thead><tbody>`;
+        h += `<table class="x-table">${getExportThead(startTrip, endTrip)}<tbody>`;
         
         for(let b=1; b<=busCount; b++) {
             const nameMap = period === 'am' ? busNamesAM : busNamesPM;

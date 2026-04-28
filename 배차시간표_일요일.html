@@ -46,9 +46,9 @@ td.tt, td.hj { font-size: 10.5px; font-weight: 800; letter-spacing: 0; color: #3
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 
-/* 오전/오후 교대 지점 빨간색 구분선 (화면용) */
-.div-left { border-left: 2.5px solid #ef4444 !important; }
-.div-top { border-top: 2.5px solid #ef4444 !important; }
+/* [수정] 앱 화면용 얇아진 1.5px 빨간색 구분선 및 우선순위 방어 */
+table td.div-left { border-left: 1.5px solid #ef4444 !important; }
+table tbody tr.bus-start td.div-top { border-top: 1.5px solid #ef4444 !important; }
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:12px; font-weight:bold; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
@@ -66,17 +66,6 @@ table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
     @page { size: A4 portrait; margin: 0; }
     .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
-
-    .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
-    .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
-    .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
-    .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
-    .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
-
-    .x-table td.x-div-left { box-shadow: inset 2.5px 0 0 0 #ef4444 !important; }
-    .x-table tr.x-bus-start > td.x-div-left { box-shadow: inset 2.5px 0 0 0 #ef4444, inset 0 1px 0 0 #9ca3af !important; }
-    .x-table td.x-div-top { box-shadow: inset 0 2.5px 0 0 #ef4444 !important; }
-    .x-table td.x-div-left.x-div-top { box-shadow: inset 2.5px 2.5px 0 0 #ef4444 !important; }
 }
 </style>
 </head>
@@ -150,9 +139,7 @@ const busNum = localStorage.getItem('busNumber') || '101';
 document.getElementById('appTitle').innerText = `${busNum}번 ${displayTitle}`;
 
 let STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
-if (busNum !== '101') {
-    STORAGE_KEY = 'busData_v2_' + busNum + '_' + decodeURIComponent(fileName);
-}
+if (busNum !== '101') { STORAGE_KEY = 'busData_v2_' + busNum + '_' + decodeURIComponent(fileName); }
 
 window.addEventListener('DOMContentLoaded', () => {
     const navLinks = {
@@ -433,9 +420,11 @@ function getActualAmPmTrips() {
 
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
+    
     let subtitleText = '';
     if (target === 'am') subtitleText = `[ 오 전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
     else if (target === 'pm') subtitleText = `[ 오 후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+    else if (target === 'split') subtitleText = `운행대수: ${busCount}대`; 
     else subtitleText = `운행대수: ${busCount}대`;
 
     let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
@@ -445,6 +434,7 @@ function getScheduleHTML(target) {
     for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
 
     const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
+    
     const actualTrips = getActualAmPmTrips();
     let targetMax = actualTrips.maxInt;
     if (target === 'am') targetMax = actualTrips.maxAm;
@@ -465,38 +455,69 @@ function getScheduleHTML(target) {
     }
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
-    const styleVars = `--cell-height: ${exactCellHeight}px; --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; --fs-seq: ${fsSeq}px; --fs-dep: ${fsDep}px; --fs-sub: ${fsSub}px; --fs-s-big: ${fsDep * 2}px; --fs-s-small: ${fsDep * 1.4}px;`;
 
+    const styleVars = `
+        --cell-height: ${exactCellHeight}px;
+        --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px;
+        --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px;
+        --fs-seq: ${fsSeq}px;
+        --fs-dep: ${fsDep}px;
+        --fs-sub: ${fsSub}px;
+        --fs-s-big: ${fsDep * 2}px;
+        --fs-s-small: ${fsDep * 1.4}px;
+    `;
+
+    // [수정] 내보내기용(사진/인쇄) 얇아진 1.5px 빨간색 구분선
     let exportStyles = `
         .x-wrap { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
         .x-wrap * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         .x-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
+        
         .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
+        
         .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:800; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
+        
         .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+        
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
         .x-dep { font-size:var(--fs-dep); font-weight:900; color:#1d4ed8; }
         .x-arr { font-size:var(--fs-dep); font-weight:900; color:#0f766e; } 
         .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
         .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:900; } 
+        
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
+        
+        /* 사진 전송용 빨간색 1.5px 가로/세로 구분선 */
+        .x-table td.x-div-left { border-left: 1.5px solid #ef4444 !important; }
+        .x-table tr.x-bus-start > td.x-div-top { border-top: 1.5px solid #ef4444 !important; }
+        
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
         .x-title-box.pm { color:#991b1b; }
-        .x-div-left { border-left: 2.5px solid #ef4444 !important; }
-        .x-div-top { border-top: 2.5px solid #ef4444 !important; }
 
-        /* [인쇄 전용 폰트/칸 뻥튀기] 사진에는 영향 X, 인쇄 시에만 글자와 칸을 대폭 확대! */
+        /* [수정] 인쇄 시 잘림 방지를 위해 뻥튀기 비율을 1.05배 수준으로 낮춰 A4에 딱 맞게 고정 + 빨간선 우선순위 강화 */
         @media print {
             .x-wrap {
-                --cell-height: ${exactCellHeight * 1.22}px !important;
-                --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.2}px !important;
-                --fs-seq: ${fsSeq * 1.15}px !important;
-                --fs-dep: ${fsDep * 1.35}px !important;
-                --fs-sub: ${fsSub * 1.45}px !important;
-                --fs-s-big: ${fsDep * 2 * 1.2}px !important;
-                --fs-s-small: ${fsDep * 1.4 * 1.2}px !important;
+                --cell-height: ${exactCellHeight * 1.05}px !important;
+                --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.05}px !important;
+                --fs-seq: ${fsSeq * 1.05}px !important;
+                --fs-dep: ${fsDep * 1.15}px !important;
+                --fs-sub: ${fsSub * 1.25}px !important;
+                --fs-s-big: ${fsDep * 2 * 1.1}px !important;
+                --fs-s-small: ${fsDep * 1.4 * 1.1}px !important;
             }
+
+            .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
+            .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
+            .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
+            .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+            .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+
+            /* 빨간색 구분선 인쇄 방어용 (가로선을 우선 적용하여 덮어쓰기 방지) */
+            .x-table td.x-div-left { box-shadow: inset 1.5px 0 0 0 #ef4444 !important; }
+            .x-table tr.x-bus-start > td.x-div-top { box-shadow: inset 0 1.5px 0 0 #ef4444 !important; }
+            .x-table tr.x-bus-start > td.x-div-left { box-shadow: inset 1.5px 0 0 0 #ef4444, inset 0 1px 0 0 #9ca3af !important; }
+            .x-table tr.x-bus-start > td.x-div-left.x-div-top { box-shadow: inset 1.5px 1.5px 0 0 #ef4444 !important; }
         }
     `;
 
@@ -533,21 +554,25 @@ function getScheduleHTML(target) {
                     r3 += `<td colspan="2" class="x-td x-arr${clsL}">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
                 }
             } else { 
-                if (isS) r1 += `<td colspan="2" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-small);">S</td>`;
-                else r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`; 
+                if (isS) {
+                    r1 += `<td colspan="2" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-small);">S</td>`;
+                } else {
+                    r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`; 
+                }
             }
         });
         return hasAnyTT ? `<tr class="x-bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="x-bus-start">${r1}</tr>`;
     }
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
+    
     const integratedTrips = Array.from({length: actualTrips.maxInt}, (_, i) => i + 1);
     const amTrips = Array.from({length: actualTrips.maxAm}, (_, i) => i + 1);
     const pmTrips = Array.from({length: actualTrips.maxPm}, (_, i) => i + 1);
     
     if (target === 'integrated') {
         tableHTML += `<table class="x-table">${getExportThead(integratedTrips)}<tbody>`;
-        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, integratedTrips.map(t=>gs(b,t)), true); 
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, integratedTrips.map(t=>gs(b,t)), true);
         tableHTML += `</tbody></table>`;
     } else if (target === 'am') {
         tableHTML += `<table class="x-table">${getExportThead(amTrips)}<tbody>`;
@@ -576,6 +601,7 @@ function getScheduleHTML(target) {
         }
         tableHTML += `</tbody></table></div>`;
     }
+    
     return contentHTML + tableHTML + `</div></div>`;
 }
 
@@ -628,15 +654,22 @@ async function captureAndShare(target) {
     const canvas = await html2canvas(exportDiv, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
     const fileName = `${busNum}번_${displayTitle}_${target}.png`;
+
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    function cleanup() { document.body.removeChild(exportDiv); document.body.removeChild(loading); }
+    function cleanup() {
+        document.body.removeChild(exportDiv);
+        document.body.removeChild(loading);
+    }
 
     if (isMobile && navigator.canShare) {
         canvas.toBlob(async (blob) => {
             const file = new File([blob], fileName, { type: 'image/png' });
-            try { await navigator.share({ files: [file], title: fileName }); } 
-            catch (e) { showPCModal(imgData, fileName); }
+            try {
+                await navigator.share({ files: [file], title: fileName });
+            } catch (e) {
+                showPCModal(imgData, fileName);
+            }
             cleanup();
         });
     } else {
@@ -662,8 +695,11 @@ document.addEventListener('keydown', function(e) {
     if (currentView !== 'input') return;
     const target = e.target;
     if (target.tagName !== 'INPUT' || !target.closest('.input-table')) return;
-    const td = target.closest('td'), tr = target.closest('tr');
+
+    const td = target.closest('td');
+    const tr = target.closest('tr');
     if (!td || !tr) return;
+
     const cellIndex = Array.from(tr.children).indexOf(td);
     let nextInput = null;
 
@@ -690,7 +726,11 @@ document.addEventListener('keydown', function(e) {
             if (nextTd) nextInput = nextTd.querySelector('input');
         }
     }
-    if (nextInput) { nextInput.focus(); nextInput.select(); }
+
+    if (nextInput) {
+        nextInput.focus();
+        nextInput.select(); 
+    }
 });
 
 loadData(); schedule=compute(); render();
