@@ -23,7 +23,6 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .tab.print-btn { background:#10b981; color:#fff; } 
 .tab.share-btn { background:#8b5cf6; color:#fff; }
 
-/* 🌟 상단 메뉴바 스크롤 및 임시 버튼 디자인 적용 */
 .quick-nav { display: flex; background: #fff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; align-items: center; }
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
 .nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; flex-shrink:0; }
@@ -34,7 +33,6 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .infobar b { font-weight:bold }
 .content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
 
-/* 앱 화면 공통 테이블 디자인 (가독성 유지) */
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
 th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:4px 2px; font-size:11px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
 th.fix-col { left: 0; z-index: 12; border-right: 1px solid #9ca3af !important; }
@@ -48,6 +46,10 @@ td.tt, td.hj { font-size: 10.5px; font-weight: 800; letter-spacing: 0; color: #3
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 
+/* 오전/오후 교대 지점 빨간색 구분선 (화면용) */
+.div-left { border-left: 2.5px solid #ef4444 !important; }
+.div-top { border-top: 2.5px solid #ef4444 !important; }
+
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:12px; font-weight:bold; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
 .modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
@@ -55,7 +57,6 @@ table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* 인쇄 전용 강제 그림자 (브라우저 잉크 절약 버그 방어) */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -71,6 +72,11 @@ table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
     .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
     .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
     .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+
+    .x-table td.x-div-left { box-shadow: inset 2.5px 0 0 0 #ef4444 !important; }
+    .x-table tr.x-bus-start > td.x-div-left { box-shadow: inset 2.5px 0 0 0 #ef4444, inset 0 1px 0 0 #9ca3af !important; }
+    .x-table td.x-div-top { box-shadow: inset 0 2.5px 0 0 #ef4444 !important; }
+    .x-table td.x-div-left.x-div-top { box-shadow: inset 2.5px 2.5px 0 0 #ef4444 !important; }
 }
 </style>
 </head>
@@ -149,7 +155,6 @@ if (busNum !== '101') {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    // 🌟 임시 파일을 포함하여 활성화 탭을 잡아주는 로직 추가
     const navLinks = {
         '배차시간표_평일.html': 'link-weekday',
         '배차시간표_토요일.html': 'link-saturday',
@@ -256,7 +261,6 @@ function render(){
     if(currentView==='integrated') renderIntegrated(c);
     else if(currentView==='split') renderSplit(c);
     else renderInput(c);
-
     updatePrintContainer();
 }
 
@@ -264,12 +268,7 @@ function updatePrintContainer() {
     let pc = document.getElementById('print-container');
     if (!pc) return;
     pc.innerHTML = '';
-    
-    if (currentView === 'input') {
-        document.body.classList.remove('use-custom-print');
-        return; 
-    }
-    
+    if (currentView === 'input') { document.body.classList.remove('use-custom-print'); return; }
     document.body.classList.add('use-custom-print');
     
     if (currentView === 'integrated') {
@@ -281,14 +280,27 @@ function updatePrintContainer() {
     }
 }
 
-function busRows(bus,slots){
+function busRows(bus, slots, isIntegrated = false){
+    const splitD = (pmTrip - 1) * busCount + pmBus;
     let r1=`<td rowspan="3" class="seq">${bus}</td>`, r2='', r3='';
+    
     slots.forEach((s,i)=>{
+        const t = i + 1;
+        const isPM = ((t - 1) * busCount + bus) >= splitD;
+        const isPrevTripAM = t > 1 ? (((t - 2) * busCount + bus) < splitD) : false;
+        const isPrevBusAM = bus > 1 ? (((t - 1) * busCount + bus - 1) < splitD) : false;
+        
+        let clsL = (isIntegrated && isPM && isPrevTripAM) ? ' div-left' : '';
+        let clsT = (isIntegrated && isPM && isPrevBusAM) ? ' div-top' : '';
+
         const isS=s&&s.fd==='S'; 
-        r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}">${s?fmt(s.fd):''}</td>`;
-        if(i<slots.length-1){ const ns=slots[i+1]; r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}">${ns&&ns.dr!=null?ns.dr:''}</td>`; }
-        r2+=`<td class="tt">${s&&s.tt||''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
-        r3+=`<td colspan="2" class="arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
+        r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}${clsL}${clsT}">${s?fmt(s.fd):''}</td>`;
+        if(i<slots.length-1){ 
+            const ns=slots[i+1]; 
+            r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}${clsT}">${ns&&ns.dr!=null?ns.dr:''}</td>`; 
+        }
+        r2+=`<td class="tt${clsL}">${s&&s.tt||''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
+        r3+=`<td colspan="2" class="arr${clsL}">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
     });
     return `<tr class="bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>`;
 }
@@ -302,7 +314,7 @@ function thead(trips){
 function renderIntegrated(el){
     const trips = Array.from({length: maxTrip}, (_, i) => i + 1);
     let h=`<div style="padding:8px; overflow-x:auto;"><table style="min-width:${Math.max(100, maxTrip * 14)}%">${thead(trips)}<tbody>`;
-    for(let b=1;b<=busCount;b++) h+=busRows(b, trips.map(t=>gs(b,t)));
+    for(let b=1;b<=busCount;b++) h+=busRows(b, trips.map(t=>gs(b,t)), true);
     el.innerHTML=h+'</tbody></table></div>';
 }
 
@@ -407,36 +419,23 @@ function importData(input) {
 function getActualAmPmTrips() {
     let maxInt = 1, maxAm = 1, maxPm = 1;
     const splitD = (pmTrip - 1) * busCount + pmBus;
-    
     const checkKey = (k) => {
         let [b, t] = k.split('-').map(Number);
         maxInt = Math.max(maxInt, t);
         let D = (t - 1) * busCount + b;
-        if (D < splitD) {
-            maxAm = Math.max(maxAm, t);
-        } else {
-            let dt = (b >= pmBus) ? (t - pmTrip + 1) : (t - pmTrip);
-            maxPm = Math.max(maxPm, dt);
-        }
+        if (D < splitD) { maxAm = Math.max(maxAm, t); } 
+        else { let dt = (b >= pmBus) ? (t - pmTrip + 1) : (t - pmTrip); maxPm = Math.max(maxPm, dt); }
     };
-
     for (let k in deps) { if (deps[k] && String(deps[k]).trim() !== '') checkKey(k); }
     for (let k in tts) { if (tts[k] && String(tts[k]).trim() !== '') checkKey(k); }
-    
-    return { 
-        maxInt: Math.min(maxTrip, maxInt), 
-        maxAm: Math.min(maxTrip, maxAm), 
-        maxPm: Math.min(maxTrip, maxPm) 
-    };
+    return { maxInt: Math.min(maxTrip, maxInt), maxAm: Math.min(maxTrip, maxAm), maxPm: Math.min(maxTrip, maxPm) };
 }
 
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
-    
     let subtitleText = '';
     if (target === 'am') subtitleText = `[ 오 전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
     else if (target === 'pm') subtitleText = `[ 오 후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else if (target === 'split') subtitleText = `운행대수: ${busCount}대`; 
     else subtitleText = `운행대수: ${busCount}대`;
 
     let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
@@ -446,7 +445,6 @@ function getScheduleHTML(target) {
     for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
 
     const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
-    
     const actualTrips = getActualAmPmTrips();
     let targetMax = actualTrips.maxInt;
     if (target === 'am') targetMax = actualTrips.maxAm;
@@ -467,40 +465,39 @@ function getScheduleHTML(target) {
     }
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
-
-    const styleVars = `
-        --cell-height: ${exactCellHeight}px;
-        --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px;
-        --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px;
-        --fs-seq: ${fsSeq}px;
-        --fs-dep: ${fsDep}px;
-        --fs-sub: ${fsSub}px;
-        --fs-s-big: ${fsDep * 2}px;
-        --fs-s-small: ${fsDep * 1.4}px;
-    `;
+    const styleVars = `--cell-height: ${exactCellHeight}px; --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; --fs-seq: ${fsSeq}px; --fs-dep: ${fsDep}px; --fs-sub: ${fsSub}px; --fs-s-big: ${fsDep * 2}px; --fs-s-small: ${fsDep * 1.4}px;`;
 
     let exportStyles = `
         .x-wrap { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
         .x-wrap * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         .x-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
-        
         .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
-        
         .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:800; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
-        
         .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
-        
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
         .x-dep { font-size:var(--fs-dep); font-weight:900; color:#1d4ed8; }
         .x-arr { font-size:var(--fs-dep); font-weight:900; color:#0f766e; } 
         .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
         .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:900; } 
-        
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
-        
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
         .x-title-box.pm { color:#991b1b; }
+        .x-div-left { border-left: 2.5px solid #ef4444 !important; }
+        .x-div-top { border-top: 2.5px solid #ef4444 !important; }
+
+        /* [인쇄 전용 폰트/칸 뻥튀기] 사진에는 영향 X, 인쇄 시에만 글자와 칸을 대폭 확대! */
+        @media print {
+            .x-wrap {
+                --cell-height: ${exactCellHeight * 1.22}px !important;
+                --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.2}px !important;
+                --fs-seq: ${fsSeq * 1.15}px !important;
+                --fs-dep: ${fsDep * 1.35}px !important;
+                --fs-sub: ${fsSub * 1.45}px !important;
+                --fs-s-big: ${fsDep * 2 * 1.2}px !important;
+                --fs-s-small: ${fsDep * 1.4 * 1.2}px !important;
+            }
+        }
     `;
 
     let tableHTML = `<style>${exportStyles}</style><div class="x-wrap" style="${styleVars}"><div class="x-container">`;
@@ -511,58 +508,63 @@ function getScheduleHTML(target) {
         return `<thead>${h}</tr></thead>`;
     }
 
-    function getExportBusRows(bus, slots) {
+    function getExportBusRows(bus, slots, isIntegrated) {
         let r1 = `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-seq">${bus}</td>`, r2 = '', r3 = '';
+        const splitD = (pmTrip - 1) * busCount + pmBus;
         
-        slots.forEach(s => {
+        slots.forEach((s, i) => {
+            const t = i + 1;
+            const isPM = ((t - 1) * busCount + bus) >= splitD;
+            const isPrevTripAM = t > 1 ? (((t - 2) * busCount + bus) < splitD) : false;
+            const isPrevBusAM = bus > 1 ? (((t - 1) * busCount + bus - 1) < splitD) : false;
+            
+            let clsL = (isIntegrated && isPM && isPrevTripAM) ? ' x-div-left' : '';
+            let clsT = (isIntegrated && isPM && isPrevBusAM) ? ' x-div-top' : '';
+
             const isS = s && s.fd === 'S';
             const dep = s ? fmt(s.fd) : '';
             
             if (hasAnyTT) {
                 if (isS) {
-                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps" style="font-size:var(--fs-s-big); border-bottom: 1px solid #cbd5e1;">S</td>`;
+                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-big); border-bottom: 1px solid #cbd5e1;">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`;
-                    r2 += `<td class="x-td x-tt">${s&&s.tt?s.tt:''}</td><td class="x-td x-hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
-                    r3 += `<td colspan="2" class="x-td x-arr">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
+                    r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`;
+                    r2 += `<td class="x-td x-tt${clsL}">${s&&s.tt?s.tt:''}</td><td class="x-td x-hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
+                    r3 += `<td colspan="2" class="x-td x-arr${clsL}">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
                 }
             } else { 
-                if (isS) {
-                    r1 += `<td colspan="2" class="x-td x-deps" style="font-size:var(--fs-s-small);">S</td>`;
-                } else {
-                    r1 += `<td colspan="2" class="x-td x-dep">${dep}</td>`; 
-                }
+                if (isS) r1 += `<td colspan="2" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-small);">S</td>`;
+                else r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`; 
             }
         });
         return hasAnyTT ? `<tr class="x-bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="x-bus-start">${r1}</tr>`;
     }
 
     const splitD = (pmTrip - 1) * busCount + pmBus;
-    
     const integratedTrips = Array.from({length: actualTrips.maxInt}, (_, i) => i + 1);
     const amTrips = Array.from({length: actualTrips.maxAm}, (_, i) => i + 1);
     const pmTrips = Array.from({length: actualTrips.maxPm}, (_, i) => i + 1);
     
     if (target === 'integrated') {
         tableHTML += `<table class="x-table">${getExportThead(integratedTrips)}<tbody>`;
-        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, integratedTrips.map(t=>gs(b,t)));
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, integratedTrips.map(t=>gs(b,t)), true); 
         tableHTML += `</tbody></table>`;
     } else if (target === 'am') {
         tableHTML += `<table class="x-table">${getExportThead(amTrips)}<tbody>`;
-        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null), false);
         tableHTML += `</tbody></table>`;
     } else if (target === 'pm') {
         tableHTML += `<table class="x-table">${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
-            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
+            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}), false);
         }
         tableHTML += `</tbody></table>`;
     } else if (target === 'split') { 
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
                         <div class="x-title-box">[ 오 전 ]</div>
                         <table class="x-table">${getExportThead(amTrips)}<tbody>`;
-        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
+        for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null), false);
         tableHTML += `</tbody></table></div>`;
         
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
@@ -570,11 +572,10 @@ function getScheduleHTML(target) {
                         <table class="x-table">${getExportThead(pmTrips)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
-            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
+            tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}), false);
         }
         tableHTML += `</tbody></table></div>`;
     }
-    
     return contentHTML + tableHTML + `</div></div>`;
 }
 
@@ -627,22 +628,15 @@ async function captureAndShare(target) {
     const canvas = await html2canvas(exportDiv, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
     const fileName = `${busNum}번_${displayTitle}_${target}.png`;
-
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    function cleanup() {
-        document.body.removeChild(exportDiv);
-        document.body.removeChild(loading);
-    }
+    function cleanup() { document.body.removeChild(exportDiv); document.body.removeChild(loading); }
 
     if (isMobile && navigator.canShare) {
         canvas.toBlob(async (blob) => {
             const file = new File([blob], fileName, { type: 'image/png' });
-            try {
-                await navigator.share({ files: [file], title: fileName });
-            } catch (e) {
-                showPCModal(imgData, fileName);
-            }
+            try { await navigator.share({ files: [file], title: fileName }); } 
+            catch (e) { showPCModal(imgData, fileName); }
             cleanup();
         });
     } else {
@@ -668,11 +662,8 @@ document.addEventListener('keydown', function(e) {
     if (currentView !== 'input') return;
     const target = e.target;
     if (target.tagName !== 'INPUT' || !target.closest('.input-table')) return;
-
-    const td = target.closest('td');
-    const tr = target.closest('tr');
+    const td = target.closest('td'), tr = target.closest('tr');
     if (!td || !tr) return;
-
     const cellIndex = Array.from(tr.children).indexOf(td);
     let nextInput = null;
 
@@ -699,11 +690,7 @@ document.addEventListener('keydown', function(e) {
             if (nextTd) nextInput = nextTd.querySelector('input');
         }
     }
-
-    if (nextInput) {
-        nextInput.focus();
-        nextInput.select(); 
-    }
+    if (nextInput) { nextInput.focus(); nextInput.select(); }
 });
 
 loadData(); schedule=compute(); render();

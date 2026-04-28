@@ -33,7 +33,6 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .infobar b { font-weight:bold; color:#0f172a; }
 .content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
 
-/* 앱 화면 공통 테이블 디자인 (임시 분리형) */
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
 th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:4px 2px; font-size:11px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
 th.fix-col { left: 0; z-index: 12; border-right: 1px solid #9ca3af !important; width: 48px !important; }
@@ -58,7 +57,6 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 .modal-row input { width:64px; height:40px; border:2px solid #94a3b8; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
 
-/* 인쇄 전용 CSS (프린터 잉크 절약 100% 무력화) */
 #print-container { display: none; }
 @media print {
     html, body { height: 100% !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
@@ -131,7 +129,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <div class="modal-bg hidden" id="share-modal-bg" onclick="closeShareModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 style="margin-bottom:20px; color:#475569;">📷 임시 시간표 전송</h3>
-    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#475569; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 (나란히) 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 (나란히) 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('am')">오전 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
     <button style="width:100%; padding:14px; border-radius:8px; background:#e2e8f0; color:#4a5568; border:none;" onclick="closeShareModal()">닫기</button>
@@ -147,10 +145,14 @@ document.getElementById('appTitle').innerText = `${busNum}번 임시 시간표`;
 let STORAGE_KEY = 'bus101Data_v2_임시';
 if (busNum !== '101') { STORAGE_KEY = 'busData_v2_' + busNum + '_임시'; }
 
+window.addEventListener('DOMContentLoaded', () => {
+    const navLinks = { '배차시간표_평일.html': 'link-weekday', '배차시간표_토요일.html': 'link-saturday', '배차시간표_일요일.html': 'link-sunday', '배차시간표_방학.html': 'link-vacation', '배차시간표_임시.html': 'link-temp' };
+    const activeId = navLinks['배차시간표_임시.html'];
+    if (activeId) document.getElementById(activeId).classList.add('active');
+});
+
 let busCount=16, ratio=0.525, amTrip=3, pmTrip=3, currentView='integrated';
-const deps={}, tts={};
-// 오전과 오후의 차량번호를 완전히 별도로 저장합니다.
-const busNamesAM={}, busNamesPM={};
+const deps={}, tts={}, busNamesAM={}, busNamesPM={};
 
 function loadData() {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -171,7 +173,6 @@ function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCoun
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
-// [핵심 1] 계산 엔진 완전히 독립 실행
 function processBlock(seq, startTrip) {
   if (seq.length === 0) return;
   let cum=0; for(const s of seq){if(s.act)cum++;s.cum=cum;}
@@ -241,8 +242,6 @@ function compute(){
     const tt=tts[`${bus}-${trip}`];
     seq.push({d,trip,bus,isS,isA,val,tt:tt!=null?Number(tt):null,act:!isS});
   }
-  
-  // 오전과 오후를 완벽히 쪼개서 계산 (간섭 0%)
   const amSeq = seq.filter(s => s.trip <= amTrip);
   const pmSeq = seq.filter(s => s.trip > amTrip);
   
@@ -272,7 +271,6 @@ function updatePrintContainer() {
     if (currentView === 'input') { document.body.classList.remove('use-custom-print'); return; }
     document.body.classList.add('use-custom-print');
     
-    // 현재 보고 있는 화면을 그대로 출력
     if (currentView === 'integrated') {
         const p = document.createElement('div'); p.className = 'custom-print-page';
         p.innerHTML = getScheduleHTML('integrated'); pc.appendChild(p);
@@ -285,12 +283,10 @@ function updatePrintContainer() {
     }
 }
 
-// [핵심 2] 오전/오후 차번호 따로 입력 동기화
 function syncBusName(el, period) {
     const b = el.dataset.bus;
     if (period === 'am') busNamesAM[b] = el.value;
     else busNamesPM[b] = el.value;
-    
     document.querySelectorAll(`input[data-type="name-${period}"][data-bus="${b}"]`).forEach(inp => {
         if(inp !== el) inp.value = el.value;
     });
@@ -527,6 +523,19 @@ function getScheduleHTML(target) {
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
+        
+        /* [인쇄 전용 폰트/칸 뻥튀기] 사진에는 영향 X, 인쇄 시에만 글자와 칸을 대폭 확대! */
+        @media print {
+            .x-wrap {
+                --cell-height: ${exactCellHeight * 1.22}px !important;
+                --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.2}px !important;
+                --fs-seq: ${fsSeq * 1.15}px !important;
+                --fs-dep: ${fsDep * 1.35}px !important;
+                --fs-sub: ${fsSub * 1.45}px !important;
+                --fs-s-big: ${fsDep * 2 * 1.2}px !important;
+                --fs-s-small: ${fsDep * 1.4 * 1.2}px !important;
+            }
+        }
     `;
 
     let tableHTML = `<style>${exportStyles}</style><div class="x-wrap" style="${styleVars}">`;
@@ -600,7 +609,7 @@ function showPCModal(dataUrl, fileName) {
                 <img src="${dataUrl}" style="max-width:100%; height:auto; display:block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
             </div>
             <div style="display:flex; gap:10px; width:100%;">
-                <a href="${dataUrl}" download="${fileName}" style="flex:1; padding:14px; background:#10b981; color:#fff; text-align:center; font-weight:bold; font-size:15px; text-decoration:none; border-radius:8px; transition:0.2s;">📥 파일로 저장</a>
+                <a href="${dataUrl}" download="${fileName}" style="flex:1; padding:14px; background:#10b981; color:#fff; text-align:center; font-weight:bold; font-size:15px; text-decoration:none; border-radius:8px; transition:0.2s;">📥 내 컴퓨터에 파일로 저장</a>
                 <button onclick="this.closest('.pc-modal-wrap').remove()" style="flex:1; padding:14px; background:#4a5568; color:#fff; font-weight:bold; font-size:15px; border:none; border-radius:8px; cursor:pointer; transition:0.2s;">닫기</button>
             </div>
         </div>
@@ -672,7 +681,6 @@ document.addEventListener('keydown', function(e) {
     const target = e.target;
     if (target.tagName !== 'INPUT' || !target.closest('.input-table')) return;
     
-    // 테이블 내비게이션 로직 강화 (나란히 배치된 오전/오후 테이블 독립적 이동)
     const table = target.closest('table');
     const td = target.closest('td');
     const tr = target.closest('tr');
