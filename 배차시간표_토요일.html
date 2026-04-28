@@ -42,12 +42,11 @@ td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 td.dep, td.arr { font-size: 12px; font-weight: 900; color: #1d4ed8; padding: 2px 0; }
 td.dep-s { color:#dc2626; font-weight:900; }
-/* [수정] 운행시간, 회차지 시각 폰트 살짝 축소 (9.5px) */
 td.tt, td.hj { font-size: 9.5px; font-weight: 800; letter-spacing: -0.5px; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 2px 0; line-height: 1.2; }
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 
-/* [수정] 얇고 세련된 1.5px 빨간색 구분선 설정 */
+/* 얇고 세련된 1.5px 빨간색 구분선 설정 */
 table td.div-left { border-left: 1.5px solid #ef4444 !important; }
 table tbody tr.bus-start td.div-top { border-top: 1.5px solid #ef4444 !important; }
 
@@ -422,6 +421,7 @@ function getActualAmPmTrips() {
 
 function getScheduleHTML(target) {
     const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
+    
     let subtitleText = '';
     if (target === 'am') subtitleText = `[ 오 전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
     else if (target === 'pm') subtitleText = `[ 오 후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
@@ -435,6 +435,7 @@ function getScheduleHTML(target) {
     for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
 
     const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
+    
     const actualTrips = getActualAmPmTrips();
     let targetMax = actualTrips.maxInt;
     if (target === 'am') targetMax = actualTrips.maxAm;
@@ -445,9 +446,9 @@ function getScheduleHTML(target) {
     
     let fsSeq, fsDep, fsSub;
     if (hasAnyTT) {
-        fsSeq = (exactCellHeight * 0.75) * fontScale;  
-        fsDep = (exactCellHeight * 0.75) * fontScale;
-        fsSub = (exactCellHeight * 0.65) * fontScale; // [수정] 운행/회차지 폰트 축소 적용
+        fsSeq = (exactCellHeight * 0.8) * fontScale;  
+        fsDep = (exactCellHeight * 0.78) * fontScale;
+        fsSub = (exactCellHeight * 0.72) * fontScale; 
     } else {
         fsSeq = Math.min(22, exactCellHeight * 0.7) * fontScale;  
         fsDep = Math.min(20, exactCellHeight * 0.6) * fontScale;  
@@ -455,9 +456,18 @@ function getScheduleHTML(target) {
     }
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
-    const styleVars = `--cell-height: ${exactCellHeight}px; --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px; --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px; --fs-seq: ${fsSeq}px; --fs-dep: ${fsDep}px; --fs-sub: ${fsSub}px; --fs-s-big: ${fsDep * 2}px; --fs-s-small: ${fsDep * 1.4}px;`;
 
-    // [수정] 빨간색 구분선을 1.5px 실제 border로 강제 적용 (가로/세로선 우선순위 완벽 해결)
+    const styleVars = `
+        --cell-height: ${exactCellHeight}px;
+        --th-height: ${hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)}px;
+        --th-fs: ${hasAnyTT ? Math.max(12, exactCellHeight*0.5) : 14}px;
+        --fs-seq: ${fsSeq}px;
+        --fs-dep: ${fsDep}px;
+        --fs-sub: ${fsSub}px;
+        --fs-s-big: ${fsDep * 2}px;
+        --fs-s-small: ${fsDep * 1.4}px;
+    `;
+
     let exportStyles = `
         .x-wrap { flex: 1; width: 100%; display: flex; flex-direction: column; background: #fff; }
         .x-wrap * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
@@ -476,23 +486,24 @@ function getScheduleHTML(target) {
         
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
+        /* 사진 전송용 빨간색 1.5px 가로/세로 구분선 */
+        .x-table td.x-div-left { border-left: 1.5px solid #ef4444 !important; }
+        .x-table tr.x-bus-start > td.x-div-top { border-top: 1.5px solid #ef4444 !important; }
+        
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
         .x-title-box.pm { color:#991b1b; }
 
-        /* [핵심] 가로/세로 빨간선 완벽 구현 (사진/인쇄 공통, 그림자 충돌 방지) */
-        .x-table td.x-div-left { border-left: 1.5px solid #ef4444 !important; }
-        .x-table tr.x-bus-start > td.x-div-top { border-top: 1.5px solid #ef4444 !important; }
-
-        /* [수정] 인쇄 배율을 1.02배 수준으로 대폭 낮춰 하단 잘림 현상 완벽 방지 */
+        /* [수정] 인쇄 시 잘림을 완벽 방지하기 위해 1.02배 수준으로 하향! 
+                 가장 중요한 폰트 비율은 1.085배로 기존보다 눈에 띄게 키웠음! */
         @media print {
             .x-wrap {
                 --cell-height: ${exactCellHeight * 1.02}px !important;
                 --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.02}px !important;
                 --fs-seq: ${fsSeq * 1.05}px !important;
-                --fs-dep: ${fsDep * 1.05}px !important;
-                --fs-sub: ${fsSub * 1.05}px !important;
-                --fs-s-big: ${fsDep * 2 * 1.05}px !important;
-                --fs-s-small: ${fsDep * 1.4 * 1.05}px !important;
+                --fs-dep: ${fsDep * 1.085}px !important;
+                --fs-sub: ${fsSub * 1.085}px !important;
+                --fs-s-big: ${fsDep * 2 * 1.085}px !important;
+                --fs-s-small: ${fsDep * 1.4 * 1.085}px !important;
             }
 
             .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
@@ -500,6 +511,11 @@ function getScheduleHTML(target) {
             .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
             .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
             .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+
+            /* 빨간색 구분선 인쇄기 강제 제압용 (2px 굵은 선으로 연회색 선을 완벽히 덮어버림) */
+            .x-table td.x-div-left { border-left: 2px solid #ef4444 !important; box-shadow: inset 1px 0 0 0 #ef4444 !important; }
+            .x-table tr.x-bus-start > td.x-div-top { border-top: 2px solid #ef4444 !important; box-shadow: inset 0 1px 0 0 #ef4444 !important; }
+            .x-table tr.x-bus-start > td.x-div-left.x-div-top { border-left: 2px solid #ef4444 !important; border-top: 2px solid #ef4444 !important; box-shadow: inset 1px 1px 0 0 #ef4444 !important; }
         }
     `;
 
@@ -639,13 +655,19 @@ async function captureAndShare(target) {
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    function cleanup() { document.body.removeChild(exportDiv); document.body.removeChild(loading); }
+    function cleanup() {
+        document.body.removeChild(exportDiv);
+        document.body.removeChild(loading);
+    }
 
     if (isMobile && navigator.canShare) {
         canvas.toBlob(async (blob) => {
             const file = new File([blob], fileName, { type: 'image/png' });
-            try { await navigator.share({ files: [file], title: fileName }); } 
-            catch (e) { showPCModal(imgData, fileName); }
+            try {
+                await navigator.share({ files: [file], title: fileName });
+            } catch (e) {
+                showPCModal(imgData, fileName);
+            }
             cleanup();
         });
     } else {
