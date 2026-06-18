@@ -246,10 +246,17 @@ function compute(){
     const frac=ii-base;
     const nLong=Math.round(frac*totalGaps);
     const nShort=totalGaps-nLong;
-    const frontShort=distPeak(a0.val)<=distPeak(a1.val);
-    const gaps=[];
-    if(frontShort){ for(let k=0;k<nShort;k++)gaps.push(base); for(let k=0;k<nLong;k++)gaps.push(base+1); }
-    else { for(let k=0;k<nLong;k++)gaps.push(base+1); for(let k=0;k<nShort;k++)gaps.push(base); }
+    // 각 간격 슬롯의 대략 위치(중점)에서 정점까지 거리 계산
+    // 정점에 가까운 슬롯부터 짧은 간격(base) 배정, 나머지는 base+1
+    const slots=[];
+    for(let k=0;k<totalGaps;k++){
+      const pos=a0.val+ii*(k+0.5);
+      slots.push({k:k, dist:distPeak(pos)});
+    }
+    // 거리 가까운 순 정렬 (동률이면 앞쪽 우선)
+    slots.sort((x,y)=> x.dist!==y.dist ? x.dist-y.dist : x.k-y.k);
+    const gaps=new Array(totalGaps).fill(base+1);
+    for(let j=0;j<nShort;j++) gaps[slots[j].k]=base;
     for(const s of mid){
       const steps=s.cum-a0.cum;
       let val=a0.val;
