@@ -203,20 +203,44 @@ function processBlock(seq, startTrip) {
     const nr = n && n.rest != null ? n.rest : null;
     s.anr=pr!=null&&nr!=null?(pr+nr)/2:pr??nr??null;
   }
+  // ii 계산 (휴식 표시 등 다른 로직 호환 위해 유지)
   for(const s of seq){
     if(s.isA||!s.act||!s.pa||!s.na||s.pa.cum===s.na.cum){s.ii=null;}
     else{s.ii=(s.na.val-s.pa.val)/(s.na.cum-s.pa.cum);}
     s.ifr=s.ii!=null?s.ii-Math.floor(s.ii):null;
   }
-  let ce=0,pv=null;
+  // 정점 기반 자투리 배분: anchor 구간 단위로 처리
+  // 출근정점 07:00(420분), 퇴근정점 17:00(1020분)
+  // 구간의 앞끝/뒤끝 중 정점에 가까운 쪽을 더 촘촘하게 (짧은 간격 몰기)
+  const PEAK_AM=420, PEAK_PM=1020;
+  const distPeak=(t)=>Math.min(Math.abs(t-PEAK_AM),Math.abs(t-PEAK_PM));
   for(const s of seq){
-    if(s.isA){s.fd=s.val;ce=0;pv=s.val;continue;}
+    if(s.isA){s.fd=s.val;continue;}
     if(s.isS){s.fd='S';continue;}
-    if(!s.act||s.ii==null||pv==null){s.fd=null;continue;} 
-    const tc=ce+s.ifr;
-    if(tc>=1){s.fd=pv+Math.floor(s.ii)+1;ce=tc-1;}
-    else{s.fd=pv+Math.floor(s.ii);ce=tc;}
-    pv=s.fd;
+    s.fd=null;
+  }
+  const ancList=seq.filter(s=>s.isA).sort((a,b)=>a.d-b.d);
+  for(let ai=0;ai<ancList.length-1;ai++){
+    const a0=ancList[ai], a1=ancList[ai+1];
+    const mid=seq.filter(s=>s.d>a0.d&&s.d<a1.d&&s.act&&!s.isS&&!s.isA).sort((a,b)=>a.d-b.d);
+    const totalGaps=a1.cum-a0.cum;
+    if(totalGaps<=0){ for(const s of mid)s.fd=a0.val; continue; }
+    const total=a1.val-a0.val;
+    const ii=total/totalGaps;
+    const base=Math.floor(ii);
+    const frac=ii-base;
+    const nLong=Math.round(frac*totalGaps);
+    const nShort=totalGaps-nLong;
+    const frontShort=distPeak(a0.val)<=distPeak(a1.val);
+    const gaps=[];
+    if(frontShort){ for(let k=0;k<nShort;k++)gaps.push(base); for(let k=0;k<nLong;k++)gaps.push(base+1); }
+    else { for(let k=0;k<nLong;k++)gaps.push(base+1); for(let k=0;k<nShort;k++)gaps.push(base); }
+    for(const s of mid){
+      const steps=s.cum-a0.cum;
+      let val=a0.val;
+      for(let k=0;k<steps;k++)val+=gaps[k];
+      s.fd=val;
+    }
   }
   for(const s of seq){ if(s.fd!=null&&s.fd!=='S'&&s.tt!=null){s.mp=s.fd+s.tt*ratio;s.ar=s.fd+s.tt;} }
   for(const s of seq){
