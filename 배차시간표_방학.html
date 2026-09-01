@@ -75,11 +75,16 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
     .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
     .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
 
-    /* AM/PM 구분선 셀은 그림자 제거 — 빨간선 침범 방지 (사진/인쇄 공통) */
+    /* 구분선 셀 그림자 제거 */
     .x-table td.x-div-left, .x-table th.x-div-left,
     .x-table tr.x-bus-start > td.x-div-top,
     .x-table tr.x-bus-start > td.x-div-left { box-shadow: none !important; }
     .x-table tr.x-bus-start > td.x-div-left { border-top: 1px solid #9ca3af !important; }
+
+    /* 빨간 구분선은 마지막에 선언 (회색선에 덮이지 않도록) */
+    .x-table td.x-div-left, .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; }
+    .x-table tr.x-bus-start > td.x-div-top,
+    .x-table tr.x-bus-start > td.x-div-top.x-div-left { border-top: 2px solid #ef4444 !important; }
 }
 
   /* 확대/축소 플로팅 버튼 */
@@ -557,10 +562,10 @@ function getScheduleHTML(target) {
         
         .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
         
-        .x-th { background:#e2e8f0 !important; border:1px solid #94a3b8; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
+        .x-th { background:#e2e8f0 !important; border:0.75px solid #94a3b8; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
         
-        .x-td { border:1px solid #94a3b8; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+        .x-td { border:0.75px solid #94a3b8; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
         .x-dep { font-size:var(--fs-dep); font-weight:600; color:#1d4ed8; }
@@ -572,16 +577,19 @@ function getScheduleHTML(target) {
         .x-th-rest { width:26px; }
         
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
-        
-        /* AM/PM 구분선 — 헤더까지 연장, 가로선보다 위에 그림 */
-        .x-table td.x-div-left, .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; }
-        .x-table tr.x-bus-start > td.x-div-top { border-top: 2px solid #ef4444 !important; }
-        /* 구분선 셀은 box-shadow(차량 구분선)를 끄고 border 만 남겨 침범 차단 */
-        .x-table td.x-div-left, .x-table th.x-div-left { position: relative; z-index: 5; box-shadow: none !important; }
-        .x-table tr.x-bus-start > td.x-div-top { position: relative; z-index: 5; box-shadow: none !important; }
-        .x-table tr.x-bus-start > td.x-div-left { box-shadow: none !important; }
-        /* 구분선이면서 차량 시작인 셀: 위 회색선은 border 로 대체 */
-        .x-table tr.x-bus-start > td.x-div-left { border-top: 1px solid #9ca3af !important; }
+        /* 구분선이면서 차량 시작인 셀: 회색 위선 (빨간선보다 먼저 선언) */
+        .x-table tr.x-bus-start > td.x-div-left { border-top: 1px solid #9ca3af !important; box-shadow: none !important; }
+
+        /* AM/PM 구분선 — 반드시 마지막에 선언해야 회색선에 덮이지 않음 */
+        .x-table td.x-div-left, .x-table th.x-div-left {
+            border-left: 2px solid #ef4444 !important;
+            position: relative; z-index: 5; box-shadow: none !important;
+        }
+        .x-table tr.x-bus-start > td.x-div-top,
+        .x-table tr.x-bus-start > td.x-div-top.x-div-left {
+            border-top: 2px solid #ef4444 !important;
+            position: relative; z-index: 6; box-shadow: none !important;
+        }
         
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
         .x-title-box.pm { color:#991b1b; }
