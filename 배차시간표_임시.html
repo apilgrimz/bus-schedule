@@ -74,6 +74,12 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
     .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
     .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
     .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+
+    /* AM/PM 구분선 셀은 그림자 제거 — 빨간선 침범 방지 (사진/인쇄 공통) */
+    .x-table td.x-div-left, .x-table th.x-div-left,
+    .x-table tr.x-bus-start > td.x-div-top,
+    .x-table tr.x-bus-start > td.x-div-left { box-shadow: none !important; }
+    .x-table tr.x-bus-start > td.x-div-left { border-top: 1px solid #9ca3af !important; }
 }
 
   /* 확대/축소 플로팅 버튼 */
@@ -574,17 +580,17 @@ function getScheduleHTML(target) {
         
         .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
         
-        .x-th { background:#e2e8f0 !important; border:1px solid #b6c2d1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
+        .x-th { background:#e2e8f0 !important; border:1px solid #94a3b8; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 50px; }
         
-        .x-td { border:1px solid #b6c2d1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+        .x-td { border:1px solid #94a3b8; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
-        .x-dep { font-size:var(--fs-dep); font-weight:700; color:#1d4ed8; }
-        .x-arr { font-size:var(--fs-dep); font-weight:700; color:#0f766e; } 
+        .x-dep { font-size:var(--fs-dep); font-weight:600; color:#1d4ed8; }
+        .x-arr { font-size:var(--fs-dep); font-weight:600; color:#0f766e; } 
         .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
-        .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:600; } 
-        .x-rest { font-size:var(--fs-sub); color:#475569; font-weight:600; background:#fafafa !important; }
+        .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:500; } 
+        .x-rest { font-size:var(--fs-sub); color:#475569; font-weight:500; background:#fafafa !important; }
         .x-rest-bad { background:#fee2e2 !important; color:#b91c1c; }
         .x-th-rest { width:26px; }
         
