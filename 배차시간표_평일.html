@@ -551,10 +551,10 @@ function getScheduleHTML(target) {
         
         .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
         
-        .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:800; height:var(--th-height); color:#0f172a; }
+        .x-th { background:#e2e8f0 !important; border:1px solid #b6c2d1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
         
-        .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+        .x-td { border:1px solid #b6c2d1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
         .x-dep { font-size:var(--fs-dep); font-weight:700; color:#1d4ed8; }
@@ -567,9 +567,12 @@ function getScheduleHTML(target) {
         
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
-        /* 🚨 사진 전용 (계단 겹침 방지 정수 2px) */
-        .x-table td.x-div-left { border-left: 2px solid #ef4444 !important; }
+        /* AM/PM 구분선 — 헤더까지 연장, 가로선보다 위에 그림 */
+        .x-table td.x-div-left, .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; }
         .x-table tr.x-bus-start > td.x-div-top { border-top: 2px solid #ef4444 !important; }
+        /* 구분선 셀은 다른 테두리보다 우선 (가로선 침범 방지) */
+        .x-table td.x-div-left, .x-table th.x-div-left { position: relative; z-index: 3; }
+        .x-table tr.x-bus-start > td.x-div-top { position: relative; z-index: 3; }
         
         .x-title-box { text-align:center; font-weight:900; margin-bottom:5px; background:#e2e8f0; padding:6px; border:1px solid #9ca3af; border-bottom: none; font-size:15px; border-radius:4px 4px 0 0; color:#1e3a8a; }
         .x-title-box.pm { color:#991b1b; }
@@ -590,18 +593,29 @@ function getScheduleHTML(target) {
             .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
             .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
 
-            /* 🚨 겹침에 의한 가로 빨간선 증발 버그 완벽 차단! 그림자를 뚫어버립니다. */
-            .x-table td.x-div-left { border-left: 2px solid #ef4444 !important; }
+            /* 인쇄 시 글자 가늘게 — 잉크 번짐 방지 */
+            .x-dep, .x-arr { font-weight: 500 !important; }
+            .x-tt, .x-hj, .x-rest { font-weight: 400 !important; }
+            .x-seq { font-weight: 600 !important; }
+            .x-th { font-weight: 600 !important; }
+
+            /* 구분선은 그림자보다 우선 (가로선 침범 차단) */
+            .x-table td.x-div-left, .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; box-shadow: none !important; }
             .x-table tr.x-bus-start > td.x-div-top { border-top: 2px solid #ef4444 !important; box-shadow: none !important; }
         }
     `;
 
     let tableHTML = `<style>${exportStyles}</style><div class="x-wrap" style="${styleVars}"><div class="x-container">`;
 
-    function getExportThead(trips) {
+    function getExportThead(trips, isIntegrated) {
+        const splitD = (pmTrip - 1) * busCount + pmBus;
         let h = `<tr><th class="x-th x-th-seq">순번</th>`;
         trips.forEach((t, i) => {
-            h += `<th class="x-th" colspan="2">${t}회</th>`;
+            // 이 회차의 1번 차량이 PM 이고, 이전 회차 1번 차량이 AM 이면 왼쪽 구분선
+            const isPM = ((t - 1) * busCount + 1) >= splitD;
+            const prevAM = t > 1 ? (((t - 2) * busCount + 1) < splitD) : false;
+            const clsL = (isIntegrated && isPM && prevAM) ? ' x-div-left' : '';
+            h += `<th class="x-th${clsL}" colspan="2">${t}회</th>`;
             if (EXPORT_WITH_REST && i < trips.length-1) h += `<th class="x-th x-th-rest">휴식</th>`;
         });
         return `<thead>${h}</tr></thead>`;
@@ -638,12 +652,12 @@ function getScheduleHTML(target) {
                     r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`; 
                 }
             }
-            // 휴식 열
+            // 휴식 열 (AM/PM 구분선이 끊기지 않도록 clsT 승계)
             if (EXPORT_WITH_REST && i < slots.length-1) {
                 const ns = slots[i+1];
                 const dr = ns && ns.dr != null ? ns.dr : '';
                 const bad = (ns && ns.dr != null && ns.dr < 30 && !isS) ? ' x-rest-bad' : '';
-                r1 += `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-rest${bad}">${dr}</td>`;
+                r1 += `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-rest${bad}${clsT}">${dr}</td>`;
             }
         });
         return hasAnyTT ? `<tr class="x-bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="x-bus-start">${r1}</tr>`;
@@ -656,15 +670,15 @@ function getScheduleHTML(target) {
     const pmTrips = Array.from({length: actualTrips.maxPm}, (_, i) => i + 1);
     
     if (target === 'integrated') {
-        tableHTML += `<table class="x-table">${getExportThead(integratedTrips)}<tbody>`;
+        tableHTML += `<table class="x-table">${getExportThead(integratedTrips, true)}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, integratedTrips.map(t=>gs(b,t)), true);
         tableHTML += `</tbody></table>`;
     } else if (target === 'am') {
-        tableHTML += `<table class="x-table">${getExportThead(amTrips)}<tbody>`;
+        tableHTML += `<table class="x-table">${getExportThead(amTrips, false)}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null), false);
         tableHTML += `</tbody></table>`;
     } else if (target === 'pm') {
-        tableHTML += `<table class="x-table">${getExportThead(pmTrips)}<tbody>`;
+        tableHTML += `<table class="x-table">${getExportThead(pmTrips, false)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
             tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}), false);
@@ -673,13 +687,13 @@ function getScheduleHTML(target) {
     } else if (target === 'split') { 
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
                         <div class="x-title-box">[ 오 전 ]</div>
-                        <table class="x-table">${getExportThead(amTrips)}<tbody>`;
+                        <table class="x-table">${getExportThead(amTrips, false)}<tbody>`;
         for(let b=1; b<=busCount; b++) tableHTML += getExportBusRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null), false);
         tableHTML += `</tbody></table></div>`;
         
         tableHTML += `<div style="flex:1; display:flex; flex-direction:column; min-width:0;">
                         <div class="x-title-box pm">[ 오 후 ]</div>
-                        <table class="x-table">${getExportThead(pmTrips)}<tbody>`;
+                        <table class="x-table">${getExportThead(pmTrips, false)}<tbody>`;
         for(let p=0; p<busCount; p++){
             const b = ((pmBus-1+p)%busCount)+1;
             tableHTML += getExportBusRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}), false);
@@ -736,7 +750,14 @@ async function captureAndShare(target) {
     exportDiv.innerHTML = getScheduleHTML(target);
     document.body.appendChild(exportDiv);
 
-    const canvas = await html2canvas(exportDiv, { scale: 2 });
+    const canvas = await html2canvas(exportDiv, {
+        scale: 4,                    // 초고화질 (기존 2배 → 4배)
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        imageTimeout: 0,
+        letterRendering: true
+    });
     const imgData = canvas.toDataURL('image/png');
     const fileName = `${busNum}번_${displayTitle}_${target}.png`;
 

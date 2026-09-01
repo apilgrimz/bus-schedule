@@ -574,10 +574,10 @@ function getScheduleHTML(target) {
         
         .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
         
-        .x-th { background:#e2e8f0 !important; border:1px solid #cbd5e1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:800; height:var(--th-height); color:#0f172a; }
+        .x-th { background:#e2e8f0 !important; border:1px solid #b6c2d1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 50px; }
         
-        .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
+        .x-td { border:1px solid #b6c2d1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
         .x-dep { font-size:var(--fs-dep); font-weight:700; color:#1d4ed8; }
@@ -609,6 +609,12 @@ function getScheduleHTML(target) {
             .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
             .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
             .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+
+            /* 인쇄 시 글자 가늘게 + 내부 테두리 얇게 */
+            .x-dep, .x-arr { font-weight: 500 !important; }
+            .x-tt, .x-hj, .x-rest { font-weight: 400 !important; }
+            .x-seq { font-weight: 600 !important; }
+            .x-th { font-weight: 600 !important; }
         }
     `;
 
@@ -726,7 +732,14 @@ async function captureAndShare(target) {
     exportDiv.innerHTML = getScheduleHTML(target);
     document.body.appendChild(exportDiv);
 
-    const canvas = await html2canvas(exportDiv, { scale: 2 });
+    const canvas = await html2canvas(exportDiv, {
+        scale: 4,                    // 초고화질 (기존 2배 → 4배)
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        imageTimeout: 0,
+        letterRendering: true
+    });
     const imgData = canvas.toDataURL('image/png');
     const fileName = `${busNum}번_임시_${target}.png`;
 
