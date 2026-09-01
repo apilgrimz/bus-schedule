@@ -235,7 +235,7 @@ function compute(){
   // 정점 기반 자투리 배분: anchor 구간 단위로 처리
   // 출근정점 07:00(420분), 퇴근정점 17:00(1020분)
   // 구간의 앞끝/뒤끝 중 정점에 가까운 쪽을 더 촘촘하게 (짧은 간격 몰기)
-  const PEAK_AM=420, PEAK_PM=1020;
+  const PEAK_AM=360, PEAK_PM=960;
   const distPeak=(t)=>Math.min(Math.abs(t-PEAK_AM),Math.abs(t-PEAK_PM));
   for(const s of seq){
     if(s.isA){s.fd=s.val;continue;}
