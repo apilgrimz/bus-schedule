@@ -13,7 +13,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html { background-color: #e2e8f0; height: 100%; display: flex; justify-content: center; }
-body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:#f5f5f5; font-size:12px; -webkit-text-size-adjust:none; display:flex; flex-direction:column; height: 100%; width: 100%; max-width: 1000px; box-shadow: 0 0 20px rgba(0,0,0,0.15); overflow: hidden; margin: 0 auto; }
+body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:#f5f5f5; font-size:12px; -webkit-text-size-adjust:none; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; text-rendering:optimizeLegibility; font-variant-numeric:tabular-nums; display:flex; flex-direction:column; height: 100%; width: 100%; max-width: 1000px; box-shadow: 0 0 20px rgba(0,0,0,0.15); overflow: hidden; margin: 0 auto; }
 
 .topbar { background:#fff; border-bottom:1px solid #ddd; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; z-index:20; box-shadow:0 1px 3px rgba(0,0,0,.08); flex-shrink:0; }
 .topbar h1 { font-size:14px; font-weight:bold; color: #2563eb; }
@@ -36,13 +36,14 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
 th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:4px 2px; font-size:11px; text-align:center; position:sticky; top:0; z-index:10; border-bottom: 1px solid #9ca3af !important; }
 th.fix-col { left: 0; z-index: 12; border-right: 1px solid #9ca3af !important; }
-td.seq { font-weight:bold; background:#f8fafc !important; width:28px; position: sticky; left: 0; z-index: 5; border-right: 1px solid #9ca3af !important; }
+td.seq { font-weight:600; background:#f8fafc !important; width:28px; position: sticky; left: 0; z-index: 5; border-right: 1px solid #9ca3af !important; }
 td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-td.dep, td.arr { font-size: 12px; font-weight: 900; color: #1d4ed8; padding: 2px 0; }
-td.dep-s { color:#dc2626; font-weight:900; }
-td.tt, td.hj { font-size: 9.5px; font-weight: 800; letter-spacing: -0.5px; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 2px 0; line-height: 1.2; }
+td.dep { font-size: 12px; font-weight: 600; color: #1d4ed8; padding: 2px 0; }
+td.arr { font-size: 12px; font-weight: 600; color: #0f766e; padding: 2px 0; }
+td.dep-s { color:#dc2626; font-weight:700; }
+td.tt, td.hj { font-size: 9.5px; font-weight: 500; letter-spacing: -0.3px; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: clip; padding: 2px 0; line-height: 1.2; }
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 
@@ -50,7 +51,7 @@ table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 table td.div-left { border-left: 2px solid #ef4444 !important; }
 table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; }
 
-.input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:12px; font-weight:bold; padding:6px 2px; color:#1d4ed8 }
+.input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:12px; font-weight:600; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
 .modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
 .modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; text-align:left; }
@@ -137,6 +138,10 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <div class="modal-bg hidden" id="share-modal-bg" onclick="closeShareModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 style="margin-bottom:20px">📷 시간표 사진 전송</h3>
+    <label style="display:flex; align-items:center; justify-content:center; gap:8px; margin:-8px 0 16px 0; font-size:14px; color:#475569; cursor:pointer;">
+      <input type="checkbox" id="exportRestChk" style="width:18px; height:18px; accent-color:#475569;" onchange="saveExportRestOption()">
+      휴식시간 포함
+    </label>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('am')">오전 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
@@ -146,6 +151,21 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 
 <script>
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+
+// ── 내보내기 휴식시간 포함 옵션 ──
+function getExportRestOption(){
+  try { return localStorage.getItem('exportWithRest') === '1'; } catch(e){ return false; }
+}
+function saveExportRestOption(){
+  var el = document.getElementById('exportRestChk');
+  try { localStorage.setItem('exportWithRest', el && el.checked ? '1' : '0'); } catch(e){}
+}
+function restoreExportRestOption(){
+  var el = document.getElementById('exportRestChk');
+  if(el) el.checked = getExportRestOption();
+}
+window.addEventListener('load', function(){ setTimeout(restoreExportRestOption, 60); });
+
 
 const fileName = window.location.pathname.split('/').pop() || 'default_101';
 let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('배차시간표_', '');
@@ -504,6 +524,7 @@ function getScheduleHTML(target) {
     }
 
     const tableWidth = (target === 'am' || target === 'pm') ? '60%' : '100%';
+    const EXPORT_WITH_REST = getExportRestOption();
 
     const styleVars = `
         --cell-height: ${exactCellHeight}px;
@@ -529,10 +550,13 @@ function getScheduleHTML(target) {
         .x-td { border:1px solid #cbd5e1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
-        .x-dep { font-size:var(--fs-dep); font-weight:900; color:#1d4ed8; }
-        .x-arr { font-size:var(--fs-dep); font-weight:900; color:#0f766e; } 
+        .x-dep { font-size:var(--fs-dep); font-weight:700; color:#1d4ed8; }
+        .x-arr { font-size:var(--fs-dep); font-weight:700; color:#0f766e; } 
         .x-deps { color:#dc2626; font-weight:900; background-color:#fef2f2 !important; }
-        .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:900; } 
+        .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:600; } 
+        .x-rest { font-size:var(--fs-sub); color:#475569; font-weight:600; background:#fafafa !important; }
+        .x-rest-bad { background:#fee2e2 !important; color:#b91c1c; }
+        .x-th-rest { width:26px; }
         
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         
@@ -565,11 +589,15 @@ function getScheduleHTML(target) {
         }
     `;
 
+    const EXPORT_WITH_REST = getExportRestOption();
     let tableHTML = `<style>${exportStyles}</style><div class="x-wrap" style="${styleVars}"><div class="x-container">`;
 
     function getExportThead(trips) {
         let h = `<tr><th class="x-th x-th-seq">순번</th>`;
-        trips.forEach(t => { h += `<th class="x-th" colspan="2">${t}회</th>`; });
+        trips.forEach((t, i) => {
+            h += `<th class="x-th" colspan="2">${t}회</th>`;
+            if (EXPORT_WITH_REST && i < trips.length-1) h += `<th class="x-th x-th-rest">휴식</th>`;
+        });
         return `<thead>${h}</tr></thead>`;
     }
 
@@ -603,6 +631,13 @@ function getScheduleHTML(target) {
                 } else {
                     r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`; 
                 }
+            }
+            // 휴식 열
+            if (EXPORT_WITH_REST && i < slots.length-1) {
+                const ns = slots[i+1];
+                const dr = ns && ns.dr != null ? ns.dr : '';
+                const bad = (ns && ns.dr != null && ns.dr < 30 && !isS) ? ' x-rest-bad' : '';
+                r1 += `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-rest${bad}">${dr}</td>`;
             }
         });
         return hasAnyTT ? `<tr class="x-bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="x-bus-start">${r1}</tr>`;
@@ -682,7 +717,7 @@ async function captureAndShare(target) {
     if (target === 'am') targetMax = actualTrips.maxAm;
     else if (target === 'pm') targetMax = actualTrips.maxPm;
 
-    const reqWidth = Math.max(794, targetMax * 120);
+    const reqWidth = Math.max(794, targetMax * 120 + (getExportRestOption() ? (targetMax-1) * 34 : 0));
 
     const exportDiv = document.createElement('div');
     exportDiv.style.width = `${reqWidth}px`; 
@@ -731,6 +766,10 @@ async function captureAndShare(target) {
 }
 
 function triggerPrint() {
+    // 휴식시간 포함 여부 선택 (전송 설정과 공유)
+    var withRest = confirm('휴식시간을 포함해서 인쇄할까요?\n\n[확인] 포함    [취소] 미포함');
+    try { localStorage.setItem('exportWithRest', withRest ? '1' : '0'); } catch(e){}
+    restoreExportRestOption();
     updatePrintContainer(); 
     setTimeout(() => { window.print(); }, 500); 
 }
