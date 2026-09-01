@@ -274,17 +274,24 @@ function compute(){
     const frac=ii-base;
     const nLong=Math.round(frac*totalGaps);
     const nShort=totalGaps-nLong;
-    // 각 간격 슬롯의 대략 위치(중점)에서 정점까지 거리 계산
-    // 정점에 가까운 슬롯부터 짧은 간격(base) 배정, 나머지는 base+1
-    const slots=[];
-    for(let k=0;k<totalGaps;k++){
-      const pos=a0.val+ii*(k+0.5);
-      slots.push({k:k, dist:distPeak(pos)});
-    }
-    // 거리 가까운 순 정렬 (동률이면 앞쪽 우선)
-    slots.sort((x,y)=> x.dist!==y.dist ? x.dist-y.dist : x.k-y.k);
+    // 정점(06:00/16:00)에 가까운 슬롯을 짧은 간격으로.
+    // 거리는 정점 기준 V자이므로 "가까운 nShort개"는 연속 구간을 이룸.
+    // 엑셀 수식과 동일한 방식(정렬 없이 창 위치 계산)으로 결과 일치 보장.
     const gaps=new Array(totalGaps).fill(base+1);
-    for(let j=0;j<nShort;j++) gaps[slots[j].k]=base;
+    if(nShort>0 && nLong>0){
+      const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
+      let best=null;
+      [PEAK_AM,PEAK_PM].forEach(function(pk){
+        const ks=(pk-a0.val)/ii-0.5;
+        const kc=clamp(ks,0,totalGaps-1);
+        const d=Math.abs((a0.val+ii*(kc+0.5))-pk);
+        if(best===null||d<best.d) best={d:d, ks:ks};
+      });
+      const lo=clamp(Math.round(best.ks-(nShort-1)/2),0,totalGaps-nShort);
+      for(let k=lo;k<lo+nShort;k++) gaps[k]=base;
+    } else if(nLong<=0){
+      for(let k=0;k<totalGaps;k++) gaps[k]=base;
+    }
     for(const s of mid){
       const steps=s.cum-a0.cum;
       let val=a0.val;
@@ -589,7 +596,6 @@ function getScheduleHTML(target) {
         }
     `;
 
-    const EXPORT_WITH_REST = getExportRestOption();
     let tableHTML = `<style>${exportStyles}</style><div class="x-wrap" style="${styleVars}"><div class="x-container">`;
 
     function getExportThead(trips) {
