@@ -27,6 +27,8 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
 .nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; flex-shrink:0; }
 .nav-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.nav-btn.slot-add { background:#ebf8ff; color:#2b6cb0; border-color:#bee3f8; font-weight:800; }
+.nav-btn.slot-edit { background:#f8fafc; color:#64748b; border-color:#e2e8f0; padding:6px 9px; }
 .nav-btn.home { background: #4a5568; color: #fff; border-color: #4a5568; }
 
 .infobar { padding:4px 12px; background:#eff6ff; font-size:10px; color:#1d4ed8; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #bfdbfe; }
@@ -109,7 +111,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0217</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0238</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -119,13 +121,8 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
   </div>
 </div>
 
-<div class="quick-nav">
+<div class="quick-nav" id="slotNav">
   <button onclick="location.replace('index.html')" class="nav-btn home">🏠 홈</button>
-  <button onclick="location.replace('배차시간표_평일.html')" id="link-weekday" class="nav-btn">평일</button>
-  <button onclick="location.replace('배차시간표_토요일.html')" id="link-saturday" class="nav-btn">토요일</button>
-  <button onclick="location.replace('배차시간표_일요일.html')" id="link-sunday" class="nav-btn">일요일</button>
-  <button onclick="location.replace('배차시간표_방학.html')" id="link-vacation" class="nav-btn">방학</button>
-  <button onclick="location.replace('배차시간표_임시.html')" id="link-temp" class="nav-btn" style="background:#475569; color:#fff; border:none;">임시</button>
 </div>
 
 <div class="infobar" id="infobar"></div>
@@ -203,16 +200,115 @@ if (busNum !== '101') {
     STORAGE_KEY = 'busData_v2_' + busNum + '_' + decodeURIComponent(fileName) + slotSuffix;
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    const navLinks = {
-        '배차시간표_평일.html': 'link-weekday',
-        '배차시간표_토요일.html': 'link-saturday',
-        '배차시간표_일요일.html': 'link-sunday',
-        '배차시간표_방학.html': 'link-vacation',
-        '배차시간표_임시.html': 'link-temp'
-    };
-    const activeId = navLinks[decodeURIComponent(fileName)];
-    if (activeId) document.getElementById(activeId).classList.add('active');
+// ── 같은 종류 시간표 여러 개 관리 (슬롯) ──
+const KIND_KEY = displayTitle;                    // 평일 / 토요일 / ...
+const SELF_FILE = decodeURIComponent(fileName);
+
+function slotsStoreKey() { return 'slots_v1_' + busNum + '_' + KIND_KEY; }
+
+function loadSlotList() {
+    try {
+        const raw = localStorage.getItem(slotsStoreKey());
+        if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr) && arr.length) return arr;
+        }
+    } catch(e) {}
+    return [{ id: '', name: KIND_KEY }];
+}
+function saveSlotList(arr) {
+    try { localStorage.setItem(slotsStoreKey(), JSON.stringify(arr)); } catch(e) {}
+}
+function goSlot(id) {
+    const url = id ? (SELF_FILE + '?id=' + encodeURIComponent(id)) : SELF_FILE;
+    location.replace(url);
+}
+function renderSlotNav() {
+    const nav = document.getElementById('slotNav');
+    if (!nav) return;
+    // 홈 버튼만 남기고 정리
+    nav.querySelectorAll('.slot-item').forEach(function(el){ el.remove(); });
+
+    const list = loadSlotList();
+    list.forEach(function(slot, idx) {
+        const b = document.createElement('button');
+        b.className = 'nav-btn slot-item' + (slot.id === slotId ? ' active' : '');
+        b.innerText = slot.name || KIND_KEY;
+        b.onclick = function(){ if (slot.id !== slotId) goSlot(slot.id); };
+        nav.appendChild(b);
+    });
+
+    const edit = document.createElement('button');
+    edit.className = 'nav-btn slot-edit slot-item';
+    edit.innerText = '\u270F\uFE0F';
+    edit.title = '현재 시간표 이름 변경';
+    edit.onclick = renameCurrentSlot;
+    nav.appendChild(edit);
+
+    const add = document.createElement('button');
+    add.className = 'nav-btn slot-add slot-item';
+    add.innerText = '+ 추가';
+    add.onclick = addNewSlot;
+    nav.appendChild(add);
+
+    // 추가된 슬롯이면 삭제 버튼
+    if (slotId) {
+        const del = document.createElement('button');
+        del.className = 'nav-btn slot-item';
+        del.style.cssText = 'background:#fff5f5;color:#e53e3e;border-color:#fed7d7;';
+        del.innerText = '\u274C';
+        del.title = '현재 시간표 삭제';
+        del.onclick = deleteCurrentSlot;
+        nav.appendChild(del);
+    }
+}
+function addNewSlot() {
+    const list = loadSlotList();
+    const name = prompt('새 ' + KIND_KEY + ' 시간표 이름을 입력하세요.', KIND_KEY + ' 추가');
+    if (name === null) return;
+    const t = name.trim();
+    if (!t) { alert('이름을 입력해 주세요.'); return; }
+    const newId = 's' + Date.now().toString(36);
+    list.push({ id: newId, name: t });
+    saveSlotList(list);
+    goSlot(newId);
+}
+function renameCurrentSlot() {
+    const list = loadSlotList();
+    let cur = null;
+    list.forEach(function(s){ if (s.id === slotId) cur = s; });
+    if (!cur) return;
+    const name = prompt('이 시간표의 이름을 입력하세요.', cur.name || KIND_KEY);
+    if (name === null) return;
+    const t = name.trim();
+    if (!t) { alert('이름을 입력해 주세요.'); return; }
+    cur.name = t;
+    saveSlotList(list);
+    document.getElementById('appTitle').innerText = busNum + '번 ' + t;
+    renderSlotNav();
+}
+function deleteCurrentSlot() {
+    if (!slotId) return;
+    const list = loadSlotList();
+    let cur = null;
+    list.forEach(function(s){ if (s.id === slotId) cur = s; });
+    if (!cur) return;
+    if (!confirm('[ ' + cur.name + ' ] 시간표를 삭제할까요?\n입력한 시간 데이터도 함께 지워집니다.')) return;
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    const rest = list.filter(function(s){ return s.id !== slotId; });
+    saveSlotList(rest.length ? rest : [{ id: '', name: KIND_KEY }]);
+    goSlot('');
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+    // 현재 슬롯 이름으로 제목 갱신
+    const list = loadSlotList();
+    let cur = null;
+    list.forEach(function(s){ if (s.id === slotId) cur = s; });
+    if (cur && cur.name) {
+        document.getElementById('appTitle').innerText = busNum + '번 ' + cur.name;
+    }
+    renderSlotNav();
 });
 
 let busCount=16, ratio=0.525, pmTrip=3, pmBus=4, maxTrip=6, currentView='integrated';
