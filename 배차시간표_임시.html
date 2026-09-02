@@ -110,7 +110,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0143</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0217</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -193,8 +193,10 @@ window.addEventListener('load', function(){ setTimeout(restoreExportRestOption, 
 const busNum = localStorage.getItem('busNumber') || '101';
 document.getElementById('appTitle').innerText = `${busNum}번 임시 시간표`;
 
-let STORAGE_KEY = 'bus101Data_v2_임시';
-if (busNum !== '101') { STORAGE_KEY = 'busData_v2_' + busNum + '_임시'; }
+const slotId = new URLSearchParams(location.search).get('id') || '';
+const slotSuffix = slotId ? ('#' + slotId) : '';
+let STORAGE_KEY = 'bus101Data_v2_임시' + slotSuffix;
+if (busNum !== '101') { STORAGE_KEY = 'busData_v2_' + busNum + '_임시' + slotSuffix; }
 
 window.addEventListener('DOMContentLoaded', () => {
     const navLinks = { '배차시간표_평일.html': 'link-weekday', '배차시간표_토요일.html': 'link-saturday', '배차시간표_일요일.html': 'link-sunday', '배차시간표_방학.html': 'link-vacation', '배차시간표_임시.html': 'link-temp' };

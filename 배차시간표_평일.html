@@ -109,7 +109,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0143</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0217</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -194,9 +194,13 @@ let displayTitle = decodeURIComponent(fileName).replace('.html', '').replace('�
 const busNum = localStorage.getItem('busNumber') || '101';
 document.getElementById('appTitle').innerText = `${busNum}번 ${displayTitle}`;
 
-let STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName);
+// URL 의 ?id=N 으로 같은 종류의 시간표를 여러 개 구분해서 저장
+const slotId = new URLSearchParams(location.search).get('id') || '';
+const slotSuffix = slotId ? ('#' + slotId) : '';
+
+let STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName) + slotSuffix;
 if (busNum !== '101') {
-    STORAGE_KEY = 'busData_v2_' + busNum + '_' + decodeURIComponent(fileName);
+    STORAGE_KEY = 'busData_v2_' + busNum + '_' + decodeURIComponent(fileName) + slotSuffix;
 }
 
 window.addEventListener('DOMContentLoaded', () => {
