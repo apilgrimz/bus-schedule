@@ -115,7 +115,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0451</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0546</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -493,12 +493,17 @@ function busRows(bus, slots, isIntegrated = false){
         let clsT = (isIntegrated && isPM && isPrevBusAM) ? ' div-top' : '';
 
         const isS=s&&s.fd==='S'; 
-        const cwc = (typeof crewColorOf === 'function') ? crewColorOf(bus, t) : null;
+        // 오전/오후 표는 회차 번호가 재부여되므로 실제 회차(s.trip) 로 판정
+        const realTrip = (s && s.trip) ? s.trip : t;
+        const hasData = !!(s && (s.fd != null && s.fd !== ''));
+        const cwc = (hasData && typeof crewColorOf === 'function') ? crewColorOf(bus, realTrip) : null;
         const bgS = cwc ? ` style="background:${cwc} !important;"` : '';
         r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}${clsL}${clsT}"${bgS}>${s?fmt(s.fd):''}</td>`;
         if(i<slots.length-1){ 
             const ns=slots[i+1]; 
-            r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}${clsT}"${bgS}>${ns&&ns.dr!=null?ns.dr:''}</td>`; 
+            const drv = ns&&ns.dr!=null?ns.dr:'';
+            const restBg = (drv !== '' && cwc) ? bgS : '';
+            r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}${clsT}"${restBg}>${drv}</td>`; 
         }
         r2+=`<td class="tt${clsL}"${bgS}>${s&&s.tt||''}</td><td class="hj"${bgS}>${s&&s.mp!=null?fmt(s.mp):''}</td>`;
         r3+=`<td colspan="2" class="arr${clsL}"${bgS}>${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
@@ -838,7 +843,10 @@ function getScheduleHTML(target) {
 
             const isS = s && s.fd === 'S';
             const dep = s ? fmt(s.fd) : '';
-            const cwc = (typeof crewColorOf === 'function') ? crewColorOf(bus, t) : null;
+            // 실제 회차로 판정 (오전/오후 표는 회차 번호가 재부여되므로 s.trip 우선)
+            const realTrip = (s && s.trip) ? s.trip : t;
+            const hasData = !!(s && (s.fd != null && s.fd !== ''));
+            const cwc = (hasData && typeof crewColorOf === 'function') ? crewColorOf(bus, realTrip) : null;
             const bgS = cwc ? ` background:${cwc} !important;` : '';
             const bgAttr = cwc ? ` style="background:${cwc} !important;"` : '';
             
@@ -862,7 +870,8 @@ function getScheduleHTML(target) {
                 const ns = slots[i+1];
                 const dr = ns && ns.dr != null ? ns.dr : '';
                 const bad = (ns && ns.dr != null && ns.dr < 30 && !isS) ? ' x-rest-bad' : '';
-                r1 += `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-rest${bad}${clsT}"${bgAttr}>${dr}</td>`;
+                const restBg = (dr !== '' && cwc) ? ` style="background:${cwc} !important;"` : '';
+                r1 += `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-rest${bad}${clsT}"${restBg}>${dr}</td>`;
             }
         });
         return hasAnyTT ? `<tr class="x-bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="x-bus-start">${r1}</tr>`;
