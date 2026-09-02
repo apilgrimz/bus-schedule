@@ -562,7 +562,7 @@ function getScheduleHTML(target) {
         
         .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
         
-        .x-th { background:#e2e8f0 !important; border:0.5px solid #a8b3c1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
+        .x-th { background:#e2e8f0 !important; background-clip:padding-box; border:0.5px solid #a8b3c1; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
         
         .x-td { border:0.5px solid #a8b3c1; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:var(--cell-height); overflow:hidden; white-space:nowrap; }
@@ -600,8 +600,8 @@ function getScheduleHTML(target) {
                 --cell-height: ${exactCellHeight * 1.02}px !important;
                 --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.02}px !important;
                 --fs-seq: ${fsSeq * 1.05}px !important;
-                --fs-dep: ${fsDep * 1.085}px !important;
-                --fs-sub: ${fsSub * 1.085}px !important;
+                --fs-dep: ${fsDep * 0.98}px !important;
+                --fs-sub: ${fsSub * 0.98}px !important;
                 --fs-s-big: ${fsDep * 2 * 1.085}px !important;
                 --fs-s-small: ${fsDep * 1.4 * 1.085}px !important;
             }
@@ -616,13 +616,23 @@ function getScheduleHTML(target) {
             .x-seq { font-weight: 600 !important; }
             .x-th { font-weight: 600 !important; }
 
-            /* 구분선 셀도 차량 구분 회색선 유지 (순번 쪽과 굵기 일치) */
-            .x-table tr.x-bus-start > td.x-div-left { border-top: 1px solid #9ca3af !important; }
-
-            /* 구분선은 그림자보다 우선 (가로선 침범 차단) — th 포함 */
-            .x-table td.x-div-left, .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; box-shadow: none !important; }
-            .x-table tr.x-bus-start > td.x-div-top,
-            .x-table tr.x-bus-start > td.x-div-top.x-div-left { border-top: 2px solid #ef4444 !important; box-shadow: none !important; }
+            /* AM/PM 구분선 — border 로 그림(모든 렌더러 호환).
+               헤더 th 와 본문 td 를 동일 굵기(2px)로 지정. */
+            .x-table th.x-div-left,
+            .x-table td.x-div-left { border-left: 2px solid #ef4444 !important; }
+            /* 구분선 셀: 세로 빨간선 + 차량 시작 회색 가로선 함께 유지 */
+            .x-table tr.x-bus-start > td.x-div-left {
+                border-left: 2px solid #ef4444 !important;
+                border-top: 1px solid #9ca3af !important;
+                box-shadow: none !important; }
+            /* 가로 구분선(빨강) — 세로선과 겹칠 때도 둘 다 표시 */
+            .x-table tr.x-bus-start > td.x-div-top {
+                border-top: 2px solid #ef4444 !important;
+                box-shadow: none !important; }
+            .x-table tr.x-bus-start > td.x-div-top.x-div-left {
+                border-left: 2px solid #ef4444 !important;
+                border-top: 2px solid #ef4444 !important;
+                box-shadow: none !important; }
         }
     `;
 
