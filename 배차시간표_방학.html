@@ -68,23 +68,22 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
     .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
 
-    /* 연회색 뼈대 유지 (기본 그림자) */
-    .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
-    .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
-    .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
-    .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
-    .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+    /* 회색 뼈대 — border 로 통일 (box-shadow 는 구분선 셀에서 꺼지므로 사용 안 함) */
+    .x-table tr.x-bus-start > td { border-top: 1px solid #9ca3af !important; box-shadow: none !important; }
+    .x-table tr:last-child > td { border-bottom: 1px solid #9ca3af !important; }
+    .x-table td.x-seq, .x-table th.x-th-seq { border-right: 1px solid #9ca3af !important; box-shadow: none !important; }
 
-    /* 구분선 셀 그림자 제거 */
-    .x-table td.x-div-left, .x-table th.x-div-left,
-    .x-table tr.x-bus-start > td.x-div-top,
-    .x-table tr.x-bus-start > td.x-div-left { box-shadow: none !important; }
-    .x-table tr.x-bus-start > td.x-div-left { border-top: 1px solid #9ca3af !important; }
-
-    /* 빨간 구분선은 마지막에 선언 (회색선에 덮이지 않도록) */
-    .x-table td.x-div-left, .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; }
-    .x-table tr.x-bus-start > td.x-div-top,
-    .x-table tr.x-bus-start > td.x-div-top.x-div-left { border-top: 2px solid #ef4444 !important; }
+    /* 빨간 구분선 — 헤더/본문 동일 굵기, 회색선과 공존 */
+    .x-table td.x-div-left,
+    .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; box-shadow: none !important; }
+    .x-table tr.x-bus-start > td.x-div-left {
+        border-left: 2px solid #ef4444 !important;
+        border-top: 1px solid #9ca3af !important; box-shadow: none !important; }
+    .x-table tr.x-bus-start > td.x-div-top {
+        border-top: 2px solid #ef4444 !important; box-shadow: none !important; }
+    .x-table tr.x-bus-start > td.x-div-top.x-div-left {
+        border-left: 2px solid #ef4444 !important;
+        border-top: 2px solid #ef4444 !important; box-shadow: none !important; }
 }
 
   /* 확대/축소 플로팅 버튼 */
@@ -600,15 +599,15 @@ function getScheduleHTML(target) {
                 --cell-height: ${exactCellHeight * 1.02}px !important;
                 --th-height: ${(hasAnyTT ? exactCellHeight : Math.min(exactCellHeight, 40)) * 1.02}px !important;
                 --fs-seq: ${fsSeq * 1.05}px !important;
-                --fs-dep: ${fsDep * 0.98}px !important;
-                --fs-sub: ${fsSub * 0.98}px !important;
+                --fs-dep: ${fsDep * 0.92}px !important;
+                --fs-sub: ${fsSub * 0.92}px !important;
                 --fs-s-big: ${fsDep * 2 * 1.085}px !important;
                 --fs-s-small: ${fsDep * 1.4 * 1.085}px !important;
             }
 
-            .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
-            .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
-            .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
+            .x-table tr.x-bus-start > td { border-top: 1px solid #9ca3af !important; box-shadow: none !important; }
+            .x-table tr:last-child > td { border-bottom: 1px solid #9ca3af !important; box-shadow: none !important; }
+            .x-table td.x-seq, .x-table th.x-th-seq { border-right: 1px solid #9ca3af !important; box-shadow: none !important; }
 
             /* 인쇄 시 글자 가늘게 — 잉크 번짐 방지 */
             .x-dep, .x-arr { font-weight: 500 !important; }
