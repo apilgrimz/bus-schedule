@@ -51,6 +51,15 @@
     <button onclick="location.replace('배차시간표_일요일.html')" class="btn btn-red">일요일 배차시간표</button>
     <button onclick="location.replace('배차시간표_방학.html')" class="btn btn-purple">방학 배차시간표</button>
     <button onclick="location.replace('배차시간표_임시.html')" class="btn btn-gray">⚠️ 임시 배차시간표</button>
+
+    <div style="border-top:1px solid #e2e8f0; margin-top:16px; padding-top:14px;">
+      <p style="font-size:11px; color:#94a3b8; margin:0 0 8px; text-align:left;">노선의 모든 시간표를 한 번에 저장·복구합니다.</p>
+      <div style="display:flex; gap:8px;">
+        <button onclick="exportRoute()" style="flex:1; padding:11px; font-size:13px; font-weight:bold; border-radius:8px; border:1px solid #2563eb; background:#fff; color:#2563eb; cursor:pointer;">💾 노선 전체 백업</button>
+        <button onclick="document.getElementById('routeFile').click()" style="flex:1; padding:11px; font-size:13px; font-weight:bold; border-radius:8px; border:1px solid #059669; background:#fff; color:#059669; cursor:pointer;">📂 백업 복구</button>
+        <input type="file" id="routeFile" accept=".json" style="display:none;" onchange="importRoute(this)">
+      </div>
+    </div>
   </div>
 
   <script>
@@ -138,6 +147,84 @@
           const wrapper = document.getElementById('inputWrapper');
           if (!wrapper.contains(event.target)) hideDropdown();
       });
+
+      // ── 노선 전체 백업 / 복구 ──
+      function collectRouteKeys() {
+          var n = busNum();
+          var keys = [];
+          for (var i = 0; i < localStorage.length; i++) {
+              var k = localStorage.key(i);
+              if (!k) continue;
+              var mine = false;
+              if (n === '101') {
+                  // 101번은 구버전 키(bus101Data_v2_) + 신버전 키 둘 다
+                  if (k.indexOf('bus101Data_v2_') === 0) mine = true;
+                  if (k.indexOf('busData_v2_101_') === 0) mine = true;
+              } else {
+                  if (k.indexOf('busData_v2_' + n + '_') === 0) mine = true;
+              }
+              if (k === 'slots_v1_' + n) mine = true;
+              if (k.indexOf('slots_v1_' + n + '_') === 0) mine = true;
+              if (mine) keys.push(k);
+          }
+          return keys;
+      }
+
+      function exportRoute() {
+          var n = busNum();
+          var keys = collectRouteKeys();
+          if (!keys.length) { alert('저장된 데이터가 없습니다.'); return; }
+
+          var payload = { type: 'busRouteBackup', version: 1, route: n,
+                          savedAt: new Date().toISOString(), data: {} };
+          keys.forEach(function(k) { payload.data[k] = localStorage.getItem(k); });
+
+          var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          var d = new Date();
+          var stamp = d.getFullYear() + ('0'+(d.getMonth()+1)).slice(-2) + ('0'+d.getDate()).slice(-2);
+          a.href = url;
+          a.download = '배차백업_' + n + '번_' + stamp + '.json';
+          a.click();
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+          alert(n + '번 노선의 시간표 ' + keys.length + '개 항목을 백업했습니다.');
+      }
+
+      function importRoute(input) {
+          var file = input.files[0];
+          if (!file) return;
+          var reader = new FileReader();
+          reader.onload = function(e) {
+              var payload;
+              try { payload = JSON.parse(e.target.result); }
+              catch(err) { alert('올바른 백업 파일이 아닙니다.'); input.value=''; return; }
+
+              if (!payload || payload.type !== 'busRouteBackup' || !payload.data) {
+                  alert('노선 전체 백업 파일이 아닙니다.\n(시간표 하나만 백업한 파일은 해당 시간표 설정창에서 복구하세요.)');
+                  input.value=''; return;
+              }
+
+              var cnt = Object.keys(payload.data).length;
+              var msg = '[ ' + payload.route + '번 ] 노선 백업을 복구합니다.\n'
+                      + '항목 ' + cnt + '개\n\n'
+                      + '현재 ' + payload.route + '번의 기존 데이터는 덮어써집니다. 진행할까요?';
+              if (!confirm(msg)) { input.value=''; return; }
+
+              try {
+                  Object.keys(payload.data).forEach(function(k) {
+                      localStorage.setItem(k, payload.data[k]);
+                  });
+                  localStorage.setItem('busNumber', payload.route);
+                  alert('복구가 완료되었습니다.');
+                  location.reload();
+              } catch(err) {
+                  alert('복구 중 오류가 발생했습니다. 저장 공간이 부족할 수 있습니다.');
+              }
+              input.value='';
+          };
+          reader.readAsText(file);
+      }
 
       function shareApp() {
           if (navigator.share) {
