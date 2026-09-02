@@ -110,7 +110,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-1354</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-1421</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -738,7 +738,9 @@ function getScheduleHTML(target) {
     let hasAnyTT = false;
     for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
 
-    const exactCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 ); 
+    // 4배 확대 시 정수 픽셀이 되도록 0.25 단위로 맞춤 (선 겹침 방지)
+    const rawCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 );
+    const exactCellHeight = Math.round(rawCellHeight * 4) / 4; 
     
     const actualTrips = getActualAmPmTrips();
     let targetMax = actualTrips.maxInt;
@@ -778,12 +780,14 @@ function getScheduleHTML(target) {
         .x-wrap * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         .x-container { width:${tableWidth}; height:100%; margin:0 auto; display:flex; flex-direction:row !important; flex-wrap:nowrap !important; align-items:flex-start; justify-content:center; gap:15px; } 
         
-        .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important; }
+        .x-table { border-collapse:collapse; width:100%; height:100%; table-layout:fixed; background:#fff; border-top: 1px solid #9ca3af !important; border-bottom: 1px solid #9ca3af !important;
+                   transform: translateZ(0); backface-visibility: hidden; }
+        .x-table td, .x-table th { box-sizing: border-box; }
         
-        .x-th { background:#e2e8f0 !important; background-clip:padding-box; border:0.3px solid #b4bfcc; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
+        .x-th { background:#e2e8f0 !important; background-clip:padding-box; border:0.25px solid #b4bfcc; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
         
-        .x-td { border:0.3px solid #b4bfcc; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:var(--cell-height); overflow:hidden; white-space:nowrap; }
+        .x-td { border:0.25px solid #b4bfcc; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:var(--cell-height); overflow:hidden; white-space:nowrap; }
         
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
         .x-dep { font-size:var(--fs-dep); font-weight:600; color:#1d4ed8; }
