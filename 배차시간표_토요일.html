@@ -44,12 +44,15 @@ th { background:#dbeafe !important; border:1px solid #cbd5e1; padding:4px 2px; f
 th.fix-col { left: 0; z-index: 12; border-right: 1px solid #9ca3af !important; }
 td.seq { font-weight:600; background:#f8fafc !important; width:28px; position: sticky; left: 0; z-index: 5; border-right: 1px solid #9ca3af !important; }
 td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
+
+/* 화면 폭에 따라 표 글자 크기 자동 조절 (JS 가 --col-w 를 갱신) */
+:root { --col-w: 56px; --fs-time: 12px; --fs-sub2: 9px; }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-td.dep { font-size: 12px; font-weight: 600; color: #1d4ed8; padding: 2px 0; }
-td.arr { font-size: 12px; font-weight: 600; color: #0f766e; padding: 2px 0; }
+td.dep { font-size: var(--fs-time); font-weight: 600; color: #1d4ed8; padding: 2px 0; }
+td.arr { font-size: var(--fs-time); font-weight: 600; color: #0f766e; padding: 2px 0; }
 td.dep-s { color:#dc2626; font-weight:700; }
-td.tt, td.hj { font-size: 9px; font-weight: 500; letter-spacing: -0.4px; color: #334155; white-space: nowrap; overflow: visible; padding: 2px 0; line-height: 1.2; }
+td.tt, td.hj { font-size: var(--fs-sub2); font-weight: 500; letter-spacing: -0.3px; color: #334155; white-space: nowrap; overflow: hidden; padding: 2px 0; line-height: 1.2; }
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 
@@ -102,20 +105,12 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
     .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; }
     .x-table tr.x-bus-start > td.x-div-top { border-top: 2px solid #ef4444 !important; }
 }
-
-  /* 확대/축소 플로팅 버튼 */
-  .zoom-controls { position: fixed; right: 14px; bottom: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 900; }
-  .zoom-btn { width: 46px; height: 46px; border-radius: 50%; border: none; background: rgba(43,108,176,0.92); color: #fff; font-size: 22px; font-weight: 900; box-shadow: 0 3px 8px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-tap-highlight-color: transparent; }
-  .zoom-btn:active { background: #2b6cb0; transform: scale(0.94); }
-  .zoom-btn.zoom-reset { font-size: 13px; font-weight: 700; background: rgba(71,85,105,0.92); }
-  .zoom-level { text-align: center; font-size: 11px; color: #475569; font-weight: 700; background: rgba(255,255,255,0.9); border-radius: 6px; padding: 2px 0; }
-  @media print { .zoom-controls { display: none !important; } }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0813</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-1354</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -455,8 +450,37 @@ function render(){
     else if(currentView==='split') renderSplit(c);
     else renderInput(c);
 
+    fitCellFont();
     updatePrintContainer();
 }
+
+// 실제 셀 폭을 재서 글자 크기를 맞춘다 (기기 화면 폭·회차 수에 자동 대응)
+function fitCellFont(){
+    try {
+        const el = document.querySelector('#content td.dep, #content td.tt');
+        if (!el) return;
+        // 출발 셀은 2칸 병합이므로 절반이 실제 한 칸 폭
+        const depCell = document.querySelector('#content td.dep');
+        const w = depCell ? depCell.getBoundingClientRect().width : 0;
+        if (!w) return;
+
+        // "12:34" 5글자가 들어가려면 대략 글자폭 = 폰트 * 0.58
+        let fsTime = Math.floor(w / (5 * 0.58));
+        fsTime = Math.max(9, Math.min(15, fsTime));
+
+        // 운행/회차지 칸은 출발칸의 절반 폭, "12:34" 기준
+        let fsSub = Math.floor((w / 2) / (5 * 0.56));
+        fsSub = Math.max(7, Math.min(11, fsSub));
+
+        const root = document.documentElement;
+        root.style.setProperty('--fs-time', fsTime + 'px');
+        root.style.setProperty('--fs-sub2', fsSub + 'px');
+    } catch(e) {}
+}
+
+// 화면 회전·크기 변경 시 다시 계산
+window.addEventListener('resize', function(){ setTimeout(fitCellFont, 80); });
+window.addEventListener('orientationchange', function(){ setTimeout(fitCellFont, 200); });
 
 function updatePrintContainer() {
     let pc = document.getElementById('print-container');
@@ -1062,42 +1086,5 @@ document.addEventListener('keydown', function(e) {
 loadData(); schedule=compute(); render();
 </script>
 
-<div class="zoom-controls no-print">
-  <button class="zoom-btn" onclick="zoomStep(1)" aria-label="확대">＋</button>
-  <div class="zoom-level" id="zoomLevel">100%</div>
-  <button class="zoom-btn" onclick="zoomStep(-1)" aria-label="축소">－</button>
-  <button class="zoom-btn zoom-reset" onclick="zoomReset()" aria-label="원래대로">100%</button>
-</div>
-
-<script>
-  // 화면 확대/축소 (인쇄 시엔 무시됨)
-  var _zoom = 1.0;
-  var _zoomMin = 0.6, _zoomMax = 2.6, _zoomStep = 0.15;
-  function applyZoom(){
-    var c = document.getElementById('content');
-    if(c){
-      c.style.transformOrigin = 'top center';
-      c.style.transform = 'scale(' + _zoom + ')';
-      c.style.width = (100 / _zoom) + '%';
-    }
-    var lbl = document.getElementById('zoomLevel');
-    if(lbl) lbl.innerText = Math.round(_zoom*100) + '%';
-    try { localStorage.setItem('viewZoom', String(_zoom)); } catch(e){}
-  }
-  function zoomStep(dir){
-    _zoom = Math.min(_zoomMax, Math.max(_zoomMin, _zoom + dir*_zoomStep));
-    _zoom = Math.round(_zoom*100)/100;
-    applyZoom();
-  }
-  function zoomReset(){ _zoom = 1.0; applyZoom(); }
-  (function(){
-    try {
-      var z = parseFloat(localStorage.getItem('viewZoom'));
-      if(!isNaN(z) && z>=_zoomMin && z<=_zoomMax) _zoom = z;
-    } catch(e){}
-    // content 가 렌더된 후 적용
-    window.addEventListener('load', function(){ setTimeout(applyZoom, 100); });
-  })();
-</script>
 </body>
 </html>
