@@ -111,7 +111,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-1445</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-1455</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -852,9 +852,14 @@ async function captureAndShare(target) {
     else if(target === 'am') targetCols = actualTrips.maxAm;
     else if(target === 'pm') targetCols = actualTrips.maxPm;
 
-    // 내용에 맞춰 계산 (A4 폭에 억지로 맞추지 않음)
-    const SEQ_W = 60, TRIP_W = 105, REST_W = 34;
-    const reqWidth = Math.max(520, SEQ_W + targetCols * TRIP_W
+    // 회차칸 폭을 글자 크기에 맞춰 자동 결정
+    const cellH = Math.round((800 / (busCount * 3 + 1)) * 4) / 4;
+    const fsDepPx = cellH * 0.78 * 0.92;
+    const needByFont = Math.ceil(5 * fsDepPx * 0.62) + 10;
+    const TRIP_W = Math.max(64, Math.min(120, needByFont));
+    const SEQ_W = Math.max(34, Math.round(TRIP_W * 0.42));
+    const REST_W = Math.max(22, Math.round(TRIP_W * 0.30));
+    const reqWidth = Math.max(420, SEQ_W + targetCols * TRIP_W
                      + (getExportRestOption() ? (targetCols - 1) * REST_W : 0));
 
     const exportDiv = document.createElement('div');
