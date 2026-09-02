@@ -149,6 +149,12 @@
       });
 
       // ── 노선 전체 백업 / 복구 ──
+      function busNum() {
+          var el = document.getElementById('busNumInput');
+          var v = el ? (el.value || '').trim() : '';
+          return v || localStorage.getItem('busNumber') || '101';
+      }
+
       function collectRouteKeys() {
           var n = busNum();
           var keys = [];
