@@ -110,7 +110,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-1455</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-1500</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -980,19 +980,12 @@ async function captureAndShare(target) {
     else if (target === 'pm') targetMax = actualTrips.maxPm;
     else if (target === 'split') targetMax = actualTrips.maxAm + actualTrips.maxPm;  // 좌우 나란히
 
-    // 회차칸 폭은 글자 크기(=셀 높이=차량 수)에 맞춰 자동 결정.
-    // 차량이 적으면 셀이 높아져 글자도 커지므로 폭도 함께 넓어져야 한다.
-    const cellH = Math.round((800 / (busCount * 3 + 1)) * 4) / 4;
-    const fsDepPx = cellH * 0.78 * 0.92;          // 출발 시각 글자 크기
-    const needByFont = Math.ceil(5 * fsDepPx * 0.62) + 10;   // '12:34' + 여백
-    const TRIP_W = Math.max(64, Math.min(120, needByFont));
-    const SEQ_W = Math.max(34, Math.round(TRIP_W * 0.42));
-    const REST_W = Math.max(22, Math.round(TRIP_W * 0.30));
-
+    // 순번 열 + (회차 × 셀폭) + 휴식 열
+    const SEQ_W = 60, TRIP_W = 105, REST_W = 34;
     let reqWidth = SEQ_W + targetMax * TRIP_W
                  + (getExportRestOption() ? (targetMax - 1) * REST_W : 0);
     if (target === 'split') reqWidth += SEQ_W;   // 좌우 배치는 순번 열이 두 개
-    reqWidth = Math.max(420, reqWidth);
+    reqWidth = Math.max(520, reqWidth);
 
     const exportDiv = document.createElement('div');
     exportDiv.style.width = `${reqWidth}px`; 
