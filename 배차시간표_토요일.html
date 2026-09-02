@@ -68,22 +68,23 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
     .custom-print-page { width: 100%; height: 296mm; padding: 15mm 10mm; box-sizing: border-box; page-break-after: always; break-after: page; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; }
     .custom-print-page:last-child { page-break-after: auto; break-after: auto; }
 
-    /* 회색 뼈대 — border 로 통일 (box-shadow 는 구분선 셀에서 꺼지므로 사용 안 함) */
-    .x-table tr.x-bus-start > td { border-top: 1px solid #9ca3af !important; box-shadow: none !important; }
-    .x-table tr:last-child > td { border-bottom: 1px solid #9ca3af !important; }
-    .x-table td.x-seq, .x-table th.x-th-seq { border-right: 1px solid #9ca3af !important; box-shadow: none !important; }
+    /* 회색 가로선은 inset shadow 로 — border-collapse 모서리 경쟁 회피 (구분선 옆에서도 안 끊김) */
+    .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
+    .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
+    .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
+    .x-table tr.x-bus-start > td.x-seq { box-shadow: inset 0 1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
+    .x-table tr:last-child > td.x-seq { box-shadow: inset 0 -1px 0 0 #9ca3af, inset -1px 0 0 0 #9ca3af !important; }
 
-    /* 빨간 구분선 — 헤더/본문 동일 굵기, 회색선과 공존 */
+    /* 빨간 세로 구분선 (헤더/본문 동일 2px). 회색 가로선은 shadow 라 그대로 유지됨 */
     .x-table td.x-div-left,
-    .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; box-shadow: none !important; }
-    .x-table tr.x-bus-start > td.x-div-left {
-        border-left: 2px solid #ef4444 !important;
-        border-top: 1px solid #9ca3af !important; box-shadow: none !important; }
+    .x-table th.x-div-left { border-left: 2px solid #ef4444 !important; }
+
+    /* 빨간 가로 구분선 — shadow 로 그려 세로선과 공존 */
     .x-table tr.x-bus-start > td.x-div-top {
-        border-top: 2px solid #ef4444 !important; box-shadow: none !important; }
+        box-shadow: inset 0 2px 0 0 #ef4444 !important; }
     .x-table tr.x-bus-start > td.x-div-top.x-div-left {
         border-left: 2px solid #ef4444 !important;
-        border-top: 2px solid #ef4444 !important; box-shadow: none !important; }
+        box-shadow: inset 0 2px 0 0 #ef4444 !important; }
 }
 
   /* 확대/축소 플로팅 버튼 */
@@ -573,7 +574,7 @@ function getScheduleHTML(target) {
         .x-tt, .x-hj { font-size:var(--fs-sub); color:#334155; font-weight:500; } 
         .x-rest { font-size:var(--fs-sub); color:#475569; font-weight:500; background:#fafafa !important; }
         .x-rest-bad { background:#fee2e2 !important; color:#b91c1c; }
-        .x-th-rest { width:26px; font-size:calc(var(--th-fs) * 0.72) !important; white-space:nowrap; letter-spacing:-0.5px; padding:0 1px; }
+        .x-th-rest { width:26px; font-size:calc(var(--th-fs) * 0.62) !important; white-space:nowrap; letter-spacing:-0.5px; padding:0 1px; }
         
         .x-bus-start .x-td { border-top: 1px solid #9ca3af !important; }
         /* 구분선이면서 차량 시작인 셀: 회색 위선 (빨간선보다 먼저 선언) */
@@ -605,9 +606,9 @@ function getScheduleHTML(target) {
                 --fs-s-small: ${fsDep * 1.4 * 1.085}px !important;
             }
 
-            .x-table tr.x-bus-start > td { border-top: 1px solid #9ca3af !important; box-shadow: none !important; }
-            .x-table tr:last-child > td { border-bottom: 1px solid #9ca3af !important; box-shadow: none !important; }
-            .x-table td.x-seq, .x-table th.x-th-seq { border-right: 1px solid #9ca3af !important; box-shadow: none !important; }
+            .x-table tr.x-bus-start > td { box-shadow: inset 0 1px 0 0 #9ca3af !important; }
+            .x-table tr:last-child > td { box-shadow: inset 0 -1px 0 0 #9ca3af !important; }
+            .x-table td.x-seq, .x-table th.x-th-seq { box-shadow: inset -1px 0 0 0 #9ca3af !important; }
 
             /* 인쇄 시 글자 가늘게 — 잉크 번짐 방지 */
             .x-dep, .x-arr { font-weight: 500 !important; }
@@ -615,23 +616,15 @@ function getScheduleHTML(target) {
             .x-seq { font-weight: 600 !important; }
             .x-th { font-weight: 600 !important; }
 
-            /* AM/PM 구분선 — border 로 그림(모든 렌더러 호환).
-               헤더 th 와 본문 td 를 동일 굵기(2px)로 지정. */
+            /* 빨간 세로 구분선 (헤더/본문 동일 2px) */
             .x-table th.x-div-left,
             .x-table td.x-div-left { border-left: 2px solid #ef4444 !important; }
-            /* 구분선 셀: 세로 빨간선 + 차량 시작 회색 가로선 함께 유지 */
-            .x-table tr.x-bus-start > td.x-div-left {
-                border-left: 2px solid #ef4444 !important;
-                border-top: 1px solid #9ca3af !important;
-                box-shadow: none !important; }
-            /* 가로 구분선(빨강) — 세로선과 겹칠 때도 둘 다 표시 */
+            /* 빨간 가로 구분선 — shadow 로 그려 회색 가로선 끊김 방지 */
             .x-table tr.x-bus-start > td.x-div-top {
-                border-top: 2px solid #ef4444 !important;
-                box-shadow: none !important; }
+                box-shadow: inset 0 2px 0 0 #ef4444 !important; }
             .x-table tr.x-bus-start > td.x-div-top.x-div-left {
                 border-left: 2px solid #ef4444 !important;
-                border-top: 2px solid #ef4444 !important;
-                box-shadow: none !important; }
+                box-shadow: inset 0 2px 0 0 #ef4444 !important; }
         }
     `;
 
