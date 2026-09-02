@@ -27,6 +27,10 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
 .nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; flex-shrink:0; }
 .nav-btn.active { background: #475569; color: #fff; border-color: #475569; }
+.crew-row { display:flex; gap:5px; align-items:center; margin-bottom:6px; }
+.crew-row select, .crew-row input { padding:6px 4px; border:1px solid #cbd5e0; border-radius:6px; font-size:12px; background:#fff; }
+.crew-row .cr-del { width:28px; padding:6px 0; border:1px solid #fed7d7; background:#fff5f5; color:#e53e3e; border-radius:6px; font-size:12px; cursor:pointer; }
+.crew-swatch { width:22px; height:22px; border-radius:5px; border:1px solid #cbd5e0; cursor:pointer; flex-shrink:0; }
 .nav-btn.slot-add { background:#ebf8ff; color:#2b6cb0; border-color:#bee3f8; font-weight:800; }
 .nav-btn.slot-edit { background:#f8fafc; color:#64748b; border-color:#e2e8f0; padding:6px 9px; }
 .nav-btn.home { background: #4a5568; color: #fff; border-color: #4a5568; }
@@ -112,7 +116,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0238</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0451</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -165,6 +169,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#475569; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 (나란히) 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('am')">오전 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#0f766e; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('split')">오전+오후 나란히 전송</button>
     <button style="width:100%; padding:14px; border-radius:8px; background:#e2e8f0; color:#4a5568; border:none;" onclick="closeShareModal()">닫기</button>
   </div>
 </div>

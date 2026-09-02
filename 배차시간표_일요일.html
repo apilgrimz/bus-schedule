@@ -27,6 +27,10 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
 .nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; flex-shrink:0; }
 .nav-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.crew-row { display:flex; gap:5px; align-items:center; margin-bottom:6px; }
+.crew-row select, .crew-row input { padding:6px 4px; border:1px solid #cbd5e0; border-radius:6px; font-size:12px; background:#fff; }
+.crew-row .cr-del { width:28px; padding:6px 0; border:1px solid #fed7d7; background:#fff5f5; color:#e53e3e; border-radius:6px; font-size:12px; cursor:pointer; }
+.crew-swatch { width:22px; height:22px; border-radius:5px; border:1px solid #cbd5e0; cursor:pointer; flex-shrink:0; }
 .nav-btn.slot-add { background:#ebf8ff; color:#2b6cb0; border-color:#bee3f8; font-weight:800; }
 .nav-btn.slot-edit { background:#f8fafc; color:#64748b; border-color:#e2e8f0; padding:6px 9px; }
 .nav-btn.home { background: #4a5568; color: #fff; border-color: #4a5568; }
@@ -111,7 +115,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0238</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-0451</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -137,6 +141,15 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
     <div class="modal-row"><label>오후시작</label><div><input id="s-pt" type="number" style="width:45px">회<input id="s-pb" type="number" style="width:45px">번</div></div>
     <div class="modal-row"><label style="color:#2563eb;">총운행횟수</label><div><input id="s-mt" type="number" style="width:45px">회</div></div>
     
+    <div style="border-top:1px solid #eee; margin:15px 0; padding-top:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <label style="font-size:13px; font-weight:bold; color:#334155;">🎨 조 구분 색상</label>
+            <button onclick="addCrewRow()" style="font-size:11px; font-weight:700; color:#2b6cb0; background:#ebf8ff; border:1px solid #bee3f8; border-radius:6px; padding:4px 9px;">+ 추가</button>
+        </div>
+        <div id="crewList"></div>
+        <p style="font-size:10px; color:#94a3b8; margin:6px 0 0; text-align:left;">지정한 차량의 오전/오후 영역 전체에 바탕색이 표시됩니다.</p>
+    </div>
+
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:15px;">
         <p style="font-size:11px; color:#666; margin-bottom:10px; text-align:left;">⚠️ 업데이트 전 데이터를 백업하세요.</p>
         <div style="display:flex; gap:8px;">
@@ -163,6 +176,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#2563eb; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('am')">오전 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#0f766e; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('split')">오전+오후 나란히 전송</button>
     <button style="width:100%; padding:14px; border-radius:8px; background:#e2e8f0; color:#4a5568; border:none;" onclick="closeShareModal()">닫기</button>
   </div>
 </div>
@@ -325,10 +339,11 @@ function loadData() {
         maxTrip = parsed.maxTrip || 6; 
         Object.assign(deps, parsed.deps || {});
         Object.assign(tts, parsed.tts || {});
+        crews = Array.isArray(parsed.crews) ? parsed.crews : [];
     }
 }
 
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, maxTrip, deps, tts })); }
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, maxTrip, deps, tts, crews })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
@@ -478,13 +493,15 @@ function busRows(bus, slots, isIntegrated = false){
         let clsT = (isIntegrated && isPM && isPrevBusAM) ? ' div-top' : '';
 
         const isS=s&&s.fd==='S'; 
-        r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}${clsL}${clsT}">${s?fmt(s.fd):''}</td>`;
+        const cwc = (typeof crewColorOf === 'function') ? crewColorOf(bus, t) : null;
+        const bgS = cwc ? ` style="background:${cwc} !important;"` : '';
+        r1+=`<td colspan="2" class="dep ${isS?'dep-s':''}${clsL}${clsT}"${bgS}>${s?fmt(s.fd):''}</td>`;
         if(i<slots.length-1){ 
             const ns=slots[i+1]; 
-            r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}${clsT}">${ns&&ns.dr!=null?ns.dr:''}</td>`; 
+            r1+=`<td rowspan="3" class="rest ${ns&&ns.dr!=null&&ns.dr<30&&!isS?'rest-bad':''}${clsT}"${bgS}>${ns&&ns.dr!=null?ns.dr:''}</td>`; 
         }
-        r2+=`<td class="tt${clsL}">${s&&s.tt||''}</td><td class="hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
-        r3+=`<td colspan="2" class="arr${clsL}">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
+        r2+=`<td class="tt${clsL}"${bgS}>${s&&s.tt||''}</td><td class="hj"${bgS}>${s&&s.mp!=null?fmt(s.mp):''}</td>`;
+        r3+=`<td colspan="2" class="arr${clsL}"${bgS}>${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
     });
     return `<tr class="bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>`;
 }
@@ -553,12 +570,73 @@ function switchView(v){
     schedule=compute(); render();
 }
 
+// ── 조 구분 색상 ──
+const CREW_COLORS = ['#dbeafe', '#dcfce7', '#fef3c7'];   // 파랑 / 초록 / 노랑
+let crews = [];   // [{ half:'am'|'pm', bus:8, color:0 }]
+
+function renderCrewList(){
+    const box = document.getElementById('crewList');
+    if (!box) return;
+    box.innerHTML = '';
+    crews.forEach(function(cw, idx){
+        const row = document.createElement('div');
+        row.className = 'crew-row';
+
+        const sel = document.createElement('select');
+        sel.innerHTML = '<option value="am">오전반</option><option value="pm">오후반</option>';
+        sel.value = cw.half;
+        sel.style.flex = '1';
+        sel.onchange = function(){ crews[idx].half = sel.value; };
+
+        const num = document.createElement('input');
+        num.type = 'number'; num.min = '1'; num.style.width = '52px';
+        num.value = cw.bus;
+        num.onchange = function(){ crews[idx].bus = Number(num.value) || 1; };
+
+        const sw = document.createElement('div');
+        sw.className = 'crew-swatch';
+        sw.style.background = CREW_COLORS[cw.color];
+        sw.title = '색상 변경';
+        sw.onclick = function(){
+            crews[idx].color = (crews[idx].color + 1) % CREW_COLORS.length;
+            sw.style.background = CREW_COLORS[crews[idx].color];
+        };
+
+        const del = document.createElement('button');
+        del.className = 'cr-del';
+        del.innerText = '\u274C';
+        del.onclick = function(){ crews.splice(idx,1); renderCrewList(); };
+
+        row.appendChild(sel); row.appendChild(num); row.appendChild(sw); row.appendChild(del);
+        box.appendChild(row);
+    });
+}
+function addCrewRow(){
+    crews.push({ half:'am', bus:1, color: crews.length % CREW_COLORS.length });
+    renderCrewList();
+}
+// 특정 (차량, 회차) 가 지정된 조에 속하면 색 반환
+function crewColorOf(bus, trip){
+    if (!crews.length) return null;
+    const splitD = (pmTrip - 1) * busCount + pmBus;
+    const d = (trip - 1) * busCount + bus;
+    const isPM = d >= splitD;
+    for (let i = 0; i < crews.length; i++){
+        const cw = crews[i];
+        if (Number(cw.bus) !== Number(bus)) continue;
+        if (cw.half === 'am' && !isPM) return CREW_COLORS[cw.color];
+        if (cw.half === 'pm' &&  isPM) return CREW_COLORS[cw.color];
+    }
+    return null;
+}
+
 function openSettings(){
     document.getElementById('s-bc').value=busCount; 
     document.getElementById('s-rt').value=ratio;
     document.getElementById('s-pt').value=pmTrip; 
     document.getElementById('s-pb').value=pmBus;
     document.getElementById('s-mt').value=maxTrip; 
+    renderCrewList();
     document.getElementById('modal-bg').classList.remove('hidden');
 }
 function closeSettings(){document.getElementById('modal-bg').classList.add('hidden');}
@@ -568,6 +646,7 @@ function applySettings(){
     pmTrip=Number(document.getElementById('s-pt').value); 
     pmBus=Number(document.getElementById('s-pb').value);
     maxTrip=Number(document.getElementById('s-mt').value) || 6; 
+    crews = crews.filter(function(cw){ return cw.bus >= 1 && cw.bus <= busCount; });
     closeSettings(); saveData(); schedule=compute(); render();
 }
 
@@ -759,20 +838,23 @@ function getScheduleHTML(target) {
 
             const isS = s && s.fd === 'S';
             const dep = s ? fmt(s.fd) : '';
+            const cwc = (typeof crewColorOf === 'function') ? crewColorOf(bus, t) : null;
+            const bgS = cwc ? ` background:${cwc} !important;` : '';
+            const bgAttr = cwc ? ` style="background:${cwc} !important;"` : '';
             
             if (hasAnyTT) {
                 if (isS) {
-                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-big); border-bottom: 1px solid #cbd5e1;">S</td>`;
+                    r1 += `<td colspan="2" rowspan="3" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-big); border-bottom: 1px solid #cbd5e1;${bgS}">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`;
-                    r2 += `<td class="x-td x-tt${clsL}">${s&&s.tt?s.tt:''}</td><td class="x-td x-hj">${s&&s.mp!=null?fmt(s.mp):''}</td>`;
-                    r3 += `<td colspan="2" class="x-td x-arr${clsL}">${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
+                    r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}"${bgAttr}>${dep}</td>`;
+                    r2 += `<td class="x-td x-tt${clsL}"${bgAttr}>${s&&s.tt?s.tt:''}</td><td class="x-td x-hj"${bgAttr}>${s&&s.mp!=null?fmt(s.mp):''}</td>`;
+                    r3 += `<td colspan="2" class="x-td x-arr${clsL}"${bgAttr}>${s&&s.ar!=null?fmt(s.ar,true):''}</td>`;
                 }
             } else { 
                 if (isS) {
-                    r1 += `<td colspan="2" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-small);">S</td>`;
+                    r1 += `<td colspan="2" class="x-td x-deps${clsL}${clsT}" style="font-size:var(--fs-s-small);${bgS}">S</td>`;
                 } else {
-                    r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}">${dep}</td>`; 
+                    r1 += `<td colspan="2" class="x-td x-dep${clsL}${clsT}"${bgAttr}>${dep}</td>`; 
                 }
             }
             // 휴식 열 (AM/PM 구분선이 끊기지 않도록 clsT 승계)
@@ -780,7 +862,7 @@ function getScheduleHTML(target) {
                 const ns = slots[i+1];
                 const dr = ns && ns.dr != null ? ns.dr : '';
                 const bad = (ns && ns.dr != null && ns.dr < 30 && !isS) ? ' x-rest-bad' : '';
-                r1 += `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-rest${bad}${clsT}">${dr}</td>`;
+                r1 += `<td rowspan="${hasAnyTT ? 3 : 1}" class="x-td x-rest${bad}${clsT}"${bgAttr}>${dr}</td>`;
             }
         });
         return hasAnyTT ? `<tr class="x-bus-start">${r1}</tr><tr>${r2}</tr><tr>${r3}</tr>` : `<tr class="x-bus-start">${r1}</tr>`;
@@ -859,8 +941,10 @@ async function captureAndShare(target) {
     let targetMax = actualTrips.maxInt;
     if (target === 'am') targetMax = actualTrips.maxAm;
     else if (target === 'pm') targetMax = actualTrips.maxPm;
+    else if (target === 'split') targetMax = actualTrips.maxAm + actualTrips.maxPm;  // 좌우 나란히
 
-    const reqWidth = Math.max(794, targetMax * 120 + (getExportRestOption() ? (targetMax-1) * 34 : 0));
+    let reqWidth = Math.max(794, targetMax * 120 + (getExportRestOption() ? (targetMax-1) * 34 : 0));
+    if (target === 'split') reqWidth = Math.max(reqWidth, 1100);  // 두 표가 눌리지 않도록
 
     const exportDiv = document.createElement('div');
     exportDiv.style.width = `${reqWidth}px`; 
