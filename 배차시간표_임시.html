@@ -111,7 +111,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0325</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0348</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -374,6 +374,12 @@ window.addEventListener('DOMContentLoaded', function() {
     const list = loadSlotList();
     let cur = null;
     list.forEach(function(s){ if (s.id === slotId) cur = s; });
+
+    // 홈에서 들어왔거나(주소에 id 없음) 해당 슬롯이 사라졌으면
+    // 목록 맨 앞 시간표로 이동
+    const first = list[0];
+    if (first && first.id !== slotId && (!slotId || !cur)) { goSlot(first.id); return; }
+
     if (cur && cur.name) {
         document.getElementById('appTitle').innerText = busNum + '번 ' + cur.name;
     }
