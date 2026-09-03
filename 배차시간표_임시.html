@@ -25,7 +25,7 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 
 .quick-nav { display: flex; background: #fff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; align-items: center; }
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
-.nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; flex-shrink:0; }
+.nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; flex-shrink:0; -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 .nav-btn.active { background: #475569; color: #fff; border-color: #475569; }
 .crew-row { display:flex; gap:5px; align-items:center; margin-bottom:6px; }
 .crew-row select, .crew-row input { padding:6px 4px; border:1px solid #cbd5e0; border-radius:6px; font-size:12px; background:#fff; }
@@ -111,7 +111,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0318</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0325</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -260,12 +260,21 @@ function attachSlotDrag(el, idx) {
             el.dataset.dragging = '1';
             el.style.opacity = '0.55';
             el.style.transform = 'scale(1.06)';
+            // 눌린 상태에서 잡힌 텍스트 선택 해제
+            try {
+                const sel = window.getSelection();
+                if (sel && sel.removeAllRanges) sel.removeAllRanges();
+            } catch(e) {}
+            // 드래그 중 좌우 스크롤 잠금
+            const nav = document.getElementById('slotNav');
+            if (nav) nav.style.overflowX = 'hidden';
             if (navigator.vibrate) { try { navigator.vibrate(30); } catch(e){} }
         }, 450);
     }
     function cancelTimer() { if (_dragTimer) { clearTimeout(_dragTimer); _dragTimer = null; } }
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
     el.addEventListener('touchstart', function(){ start(); }, {passive:true});
-    el.addEventListener('mousedown', function(){ start(); });
+    el.addEventListener('mousedown', function(e){ e.preventDefault(); start(); });
     el.addEventListener('touchmove', function(e){
         if (_dragIdx === null) { cancelTimer(); return; }
         e.preventDefault();
@@ -310,6 +319,8 @@ function endDrag() {
         const el = _dragEl;
         setTimeout(function(){ if (el) el.dataset.dragging = '0'; }, 60);
     }
+    const nav = document.getElementById('slotNav');
+    if (nav) nav.style.overflowX = 'auto';
     _dragIdx = null; _dragEl = null;
 }
 function addNewSlot() {
