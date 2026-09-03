@@ -110,7 +110,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0115</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0130</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -732,14 +732,14 @@ function getScheduleHTML(target) {
     else if (target === 'split') subtitleText = `운행대수: ${busCount}대`; 
     else subtitleText = `운행대수: ${busCount}대`;
 
-    let contentHTML = `<h2 style="text-align:center; margin:0 0 10px 0; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
-    contentHTML += `<div style="text-align:center; margin-bottom:10px; font-size:16px; font-weight:bold; color:#333;">${subtitleText}</div>`;
+    let contentHTML = `<h2 style="text-align:center; margin:0 0 7px 0; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
+    contentHTML += `<div style="text-align:center; margin-bottom:7px; font-size:16px; font-weight:bold; color:#333;">${subtitleText}</div>`;
 
     let hasAnyTT = false;
     for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
 
     // 4배 확대 시 정수 픽셀이 되도록 0.25 단위로 맞춤 (선 겹침 방지)
-    const rawCellHeight = 800 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 );
+    const rawCellHeight = 730 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 );
     const exactCellHeight = Math.round(rawCellHeight * 4) / 4; 
     
     const actualTrips = getActualAmPmTrips();
