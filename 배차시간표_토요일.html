@@ -46,7 +46,7 @@ td.seq { font-weight:600; background:#f8fafc !important; width:28px; position: s
 td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
 
 /* 화면 폭에 따라 표 글자 크기 자동 조절 (JS 가 --col-w 를 갱신) */
-:root { --col-w: 56px; --fs-time: 12px; --fs-sub2: 9px; }
+:root { --fs-time: 12.5px; --fs-sub2: 9.5px; }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 td.dep { font-size: var(--fs-time); font-weight: 600; color: #1d4ed8; padding: 2px 0; }
@@ -110,7 +110,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0212</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0318</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -235,15 +235,19 @@ function goSlot(id) {
 function renderSlotNav() {
     const nav = document.getElementById('slotNav');
     if (!nav) return;
-    // 홈 버튼만 남기고 정리
     nav.querySelectorAll('.slot-item').forEach(function(el){ el.remove(); });
 
     const list = loadSlotList();
     list.forEach(function(slot, idx) {
         const b = document.createElement('button');
-        b.className = 'nav-btn slot-item' + (slot.id === slotId ? ' active' : '');
+        b.className = 'nav-btn slot-item slot-btn-item' + (slot.id === slotId ? ' active' : '');
         b.innerText = slot.name || KIND_KEY;
-        b.onclick = function(){ if (slot.id !== slotId) goSlot(slot.id); };
+        b.dataset.idx = idx;
+        b.onclick = function(){
+            if (b.dataset.dragging === '1') return;   // 드래그 직후 클릭 방지
+            if (slot.id !== slotId) goSlot(slot.id);
+        };
+        attachSlotDrag(b, idx);
         nav.appendChild(b);
     });
 
@@ -260,16 +264,81 @@ function renderSlotNav() {
     add.onclick = addNewSlot;
     nav.appendChild(add);
 
-    // 추가된 슬롯이면 삭제 버튼
-    if (slotId) {
-        const del = document.createElement('button');
-        del.className = 'nav-btn slot-item';
-        del.style.cssText = 'background:#fff5f5;color:#e53e3e;border-color:#fed7d7;';
-        del.innerText = '\u274C';
-        del.title = '현재 시간표 삭제';
-        del.onclick = deleteCurrentSlot;
-        nav.appendChild(del);
+    // 삭제 버튼 — 어느 슬롯이든 삭제 가능
+    const del = document.createElement('button');
+    del.className = 'nav-btn slot-item';
+    del.style.cssText = 'background:#fff5f5;color:#e53e3e;border-color:#fed7d7;';
+    del.innerText = '\u274C';
+    del.title = '현재 시간표 삭제';
+    del.onclick = deleteCurrentSlot;
+    nav.appendChild(del);
+}
+
+// ── 길게 눌러 순서 변경 ──
+let _dragIdx = null, _dragTimer = null, _dragEl = null;
+
+function attachSlotDrag(el, idx) {
+    function start(clientX) {
+        _dragTimer = setTimeout(function() {
+            _dragIdx = idx; _dragEl = el;
+            el.dataset.dragging = '1';
+            el.style.opacity = '0.55';
+            el.style.transform = 'scale(1.06)';
+            if (navigator.vibrate) { try { navigator.vibrate(30); } catch(e){} }
+        }, 450);
     }
+    function cancelTimer() { if (_dragTimer) { clearTimeout(_dragTimer); _dragTimer = null; } }
+
+    el.addEventListener('touchstart', function(e){ start(e.touches[0].clientX); }, {passive:true});
+    el.addEventListener('mousedown', function(e){ start(e.clientX); });
+
+    el.addEventListener('touchmove', function(e){
+        if (_dragIdx === null) { cancelTimer(); return; }
+        e.preventDefault();
+        handleDragOver(e.touches[0].clientX);
+    }, {passive:false});
+
+    el.addEventListener('touchend', function(){ cancelTimer(); endDrag(); }, {passive:true});
+    el.addEventListener('touchcancel', function(){ cancelTimer(); endDrag(); }, {passive:true});
+    el.addEventListener('mouseup', function(){ cancelTimer(); endDrag(); });
+    el.addEventListener('mouseleave', function(){ cancelTimer(); });
+}
+
+function handleDragOver(clientX) {
+    const items = Array.from(document.querySelectorAll('#slotNav .slot-btn-item'));
+    for (let i = 0; i < items.length; i++) {
+        const r = items[i].getBoundingClientRect();
+        if (clientX >= r.left && clientX <= r.right) {
+            const targetIdx = Number(items[i].dataset.idx);
+            if (targetIdx !== _dragIdx) {
+                const list = loadSlotList();
+                const moved = list.splice(_dragIdx, 1)[0];
+                list.splice(targetIdx, 0, moved);
+                saveSlotList(list);
+                _dragIdx = targetIdx;
+                renderSlotNav();
+                // 새로 그려진 요소에 드래그 상태 유지
+                const again = document.querySelector('#slotNav .slot-btn-item[data-idx="' + targetIdx + '"]');
+                if (again) {
+                    _dragEl = again;
+                    again.dataset.dragging = '1';
+                    again.style.opacity = '0.55';
+                    again.style.transform = 'scale(1.06)';
+                }
+            }
+            break;
+        }
+    }
+}
+
+function endDrag() {
+    if (_dragEl) {
+        _dragEl.style.opacity = '';
+        _dragEl.style.transform = '';
+        const el = _dragEl;
+        setTimeout(function(){ if (el) el.dataset.dragging = '0'; }, 60);
+    }
+    _dragIdx = null; _dragEl = null;
 }
 function addNewSlot() {
     const list = loadSlotList();
@@ -297,16 +366,25 @@ function renameCurrentSlot() {
     renderSlotNav();
 }
 function deleteCurrentSlot() {
-    if (!slotId) return;
     const list = loadSlotList();
     let cur = null;
     list.forEach(function(s){ if (s.id === slotId) cur = s; });
     if (!cur) return;
-    if (!confirm('[ ' + cur.name + ' ] 시간표를 삭제할까요?\n입력한 시간 데이터도 함께 지워집니다.')) return;
+
+    // 마지막 하나만 남았으면 삭제 대신 내용 비우기
+    if (list.length <= 1) {
+        if (!confirm('[ ' + (cur.name || KIND_KEY) + ' ]\n마지막 시간표라 삭제할 수 없습니다.\n입력한 내용만 모두 지울까요?')) return;
+        try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+        location.reload();
+        return;
+    }
+
+    if (!confirm('[ ' + (cur.name || KIND_KEY) + ' ] 시간표를 삭제할까요?\n입력한 시간 데이터도 함께 지워집니다.')) return;
     try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+
     const rest = list.filter(function(s){ return s.id !== slotId; });
-    saveSlotList(rest.length ? rest : [{ id: '', name: KIND_KEY }]);
-    goSlot('');
+    saveSlotList(rest);
+    goSlot(rest[0].id);   // 남은 첫 시간표로 이동
 }
 
 window.addEventListener('DOMContentLoaded', function() {
@@ -450,37 +528,9 @@ function render(){
     else if(currentView==='split') renderSplit(c);
     else renderInput(c);
 
-    fitCellFont();
     updatePrintContainer();
 }
 
-// 실제 셀 폭을 재서 글자 크기를 맞춘다 (기기 화면 폭·회차 수에 자동 대응)
-function fitCellFont(){
-    try {
-        const el = document.querySelector('#content td.dep, #content td.tt');
-        if (!el) return;
-        // 출발 셀은 2칸 병합이므로 절반이 실제 한 칸 폭
-        const depCell = document.querySelector('#content td.dep');
-        const w = depCell ? depCell.getBoundingClientRect().width : 0;
-        if (!w) return;
-
-        // "12:34" 5글자가 들어가려면 대략 글자폭 = 폰트 * 0.58
-        let fsTime = Math.floor(w / (5 * 0.58));
-        fsTime = Math.max(9, Math.min(15, fsTime));
-
-        // 운행/회차지 칸은 출발칸의 절반 폭, "12:34" 기준
-        let fsSub = Math.floor((w / 2) / (5 * 0.56));
-        fsSub = Math.max(7, Math.min(11, fsSub));
-
-        const root = document.documentElement;
-        root.style.setProperty('--fs-time', fsTime + 'px');
-        root.style.setProperty('--fs-sub2', fsSub + 'px');
-    } catch(e) {}
-}
-
-// 화면 회전·크기 변경 시 다시 계산
-window.addEventListener('resize', function(){ setTimeout(fitCellFont, 80); });
-window.addEventListener('orientationchange', function(){ setTimeout(fitCellFont, 200); });
 
 function updatePrintContainer() {
     let pc = document.getElementById('print-container');
@@ -543,7 +593,8 @@ function thead(trips){
 
 function renderIntegrated(el){
     const trips = Array.from({length: maxTrip}, (_, i) => i + 1);
-    let h=`<div style="padding:8px; overflow-x:auto;"><table style="min-width:${Math.max(100, maxTrip * 14)}%">${thead(trips)}<tbody>`;
+    const _wInt = 30 + maxTrip*78 + (maxTrip-1)*26;
+    let h=`<div style="padding:8px; overflow-x:auto; -webkit-overflow-scrolling:touch;"><table style="min-width:${_wInt}px">${thead(trips)}<tbody>`;
     for(let b=1;b<=busCount;b++) h+=busRows(b, trips.map(t=>gs(b,t)), true);
     el.innerHTML=h+'</tbody></table></div>';
 }
@@ -557,12 +608,12 @@ function renderSplit(el){
     let h=`<div class="split-grid" style="display:flex; flex-direction:column; gap:15px; padding:8px;">
              <div class="split-item" style="overflow-x:auto;">
                <div class="section-title section-am" style="font-weight:bold; color:#1e40af; margin-bottom:4px;">오전</div>
-               <table style="min-width:${Math.max(100, amTrips.length * 17)}%">${thead(amTrips)}<tbody>`;
+               <table style="min-width:${30 + amTrips.length*78 + Math.max(0,amTrips.length-1)*26}px">${thead(amTrips)}<tbody>`;
     for(let b=1;b<=busCount;b++) h+=busRows(b, amTrips.map(t=>(t-1)*busCount+b<splitD?gs(b,t):null));
     h+=`</tbody></table></div>
         <div class="split-item" style="overflow-x:auto;">
           <div class="section-title section-pm" style="font-weight:bold; color:#991b1b; margin-bottom:4px;">오후 (${pmTrip}회${pmBus}번~)</div>
-          <table style="min-width:${Math.max(100, pmTrips.length * 17)}%">${thead(pmTrips)}<tbody>`;
+          <table style="min-width:${30 + pmTrips.length*78 + Math.max(0,pmTrips.length-1)*26}px">${thead(pmTrips)}<tbody>`;
     for(let p=0;p<busCount;p++){
         const b=((pmBus-1+p)%busCount)+1;
         h+=busRows(b, pmTrips.map(dt=>{const at=b>=pmBus?pmTrip+dt-1:pmTrip+dt; return at<=maxTrip?gs(b,at):null;}));
@@ -572,7 +623,7 @@ function renderSplit(el){
 
 function renderInput(el){
     const trips = Array.from({length: maxTrip}, (_, i) => i + 1);
-    let h=`<div style="padding:8px; overflow-x:auto;"><table class="input-table" style="min-width:${Math.max(100, maxTrip * 18)}%"><thead><tr><th class="fix-col" style="width:24px">번</th>`;
+    let h=`<div style="padding:8px; overflow-x:auto;"><table class="input-table" style="min-width:${26 + maxTrip*116}px"><thead><tr><th class="fix-col" style="width:24px">번</th>`;
     for(let t of trips) h+=`<th>${t}출발</th><th style="width:36px">운행</th>`;
     h+='</tr></thead><tbody>';
     for(let b=1;b<=busCount;b++){

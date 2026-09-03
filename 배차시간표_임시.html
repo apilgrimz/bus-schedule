@@ -46,7 +46,7 @@ td.seq { font-weight:600; background:#f8fafc !important; width:48px !important; 
 td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
 
 /* 화면 폭에 따라 표 글자 크기 자동 조절 (JS 가 --col-w 를 갱신) */
-:root { --col-w: 56px; --fs-time: 12px; --fs-sub2: 9px; }
+:root { --fs-time: 12.5px; --fs-sub2: 9.5px; }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
 td.dep { font-size: var(--fs-time); font-weight: 600; color: #1d4ed8; padding: 2px 0; }
@@ -111,7 +111,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0212</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0318</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -218,11 +218,16 @@ function renderSlotNav() {
     if (!nav) return;
     nav.querySelectorAll('.slot-item').forEach(function(el){ el.remove(); });
     const list = loadSlotList();
-    list.forEach(function(slot) {
+    list.forEach(function(slot, idx) {
         const b = document.createElement('button');
-        b.className = 'nav-btn slot-item' + (slot.id === slotId ? ' active' : '');
+        b.className = 'nav-btn slot-item slot-btn-item' + (slot.id === slotId ? ' active' : '');
         b.innerText = slot.name || KIND_KEY;
-        b.onclick = function(){ if (slot.id !== slotId) goSlot(slot.id); };
+        b.dataset.idx = idx;
+        b.onclick = function(){
+            if (b.dataset.dragging === '1') return;
+            if (slot.id !== slotId) goSlot(slot.id);
+        };
+        attachSlotDrag(b, idx);
         nav.appendChild(b);
     });
     const edit = document.createElement('button');
@@ -236,15 +241,76 @@ function renderSlotNav() {
     add.innerText = '+ 추가';
     add.onclick = addNewSlot;
     nav.appendChild(add);
-    if (slotId) {
-        const del = document.createElement('button');
-        del.className = 'nav-btn slot-item';
-        del.style.cssText = 'background:#fff5f5;color:#e53e3e;border-color:#fed7d7;';
-        del.innerText = '\u274C';
-        del.title = '현재 시간표 삭제';
-        del.onclick = deleteCurrentSlot;
-        nav.appendChild(del);
+    const del = document.createElement('button');
+    del.className = 'nav-btn slot-item';
+    del.style.cssText = 'background:#fff5f5;color:#e53e3e;border-color:#fed7d7;';
+    del.innerText = '\u274C';
+    del.title = '현재 시간표 삭제';
+    del.onclick = deleteCurrentSlot;
+    nav.appendChild(del);
+}
+
+// ── 길게 눌러 순서 변경 ──
+let _dragIdx = null, _dragTimer = null, _dragEl = null;
+
+function attachSlotDrag(el, idx) {
+    function start() {
+        _dragTimer = setTimeout(function() {
+            _dragIdx = idx; _dragEl = el;
+            el.dataset.dragging = '1';
+            el.style.opacity = '0.55';
+            el.style.transform = 'scale(1.06)';
+            if (navigator.vibrate) { try { navigator.vibrate(30); } catch(e){} }
+        }, 450);
     }
+    function cancelTimer() { if (_dragTimer) { clearTimeout(_dragTimer); _dragTimer = null; } }
+    el.addEventListener('touchstart', function(){ start(); }, {passive:true});
+    el.addEventListener('mousedown', function(){ start(); });
+    el.addEventListener('touchmove', function(e){
+        if (_dragIdx === null) { cancelTimer(); return; }
+        e.preventDefault();
+        handleDragOver(e.touches[0].clientX);
+    }, {passive:false});
+    el.addEventListener('touchend', function(){ cancelTimer(); endDrag(); }, {passive:true});
+    el.addEventListener('touchcancel', function(){ cancelTimer(); endDrag(); }, {passive:true});
+    el.addEventListener('mouseup', function(){ cancelTimer(); endDrag(); });
+    el.addEventListener('mouseleave', function(){ cancelTimer(); });
+}
+
+function handleDragOver(clientX) {
+    const items = Array.from(document.querySelectorAll('#slotNav .slot-btn-item'));
+    for (let i = 0; i < items.length; i++) {
+        const r = items[i].getBoundingClientRect();
+        if (clientX >= r.left && clientX <= r.right) {
+            const targetIdx = Number(items[i].dataset.idx);
+            if (targetIdx !== _dragIdx) {
+                const list = loadSlotList();
+                const moved = list.splice(_dragIdx, 1)[0];
+                list.splice(targetIdx, 0, moved);
+                saveSlotList(list);
+                _dragIdx = targetIdx;
+                renderSlotNav();
+                const again = document.querySelector('#slotNav .slot-btn-item[data-idx="' + targetIdx + '"]');
+                if (again) {
+                    _dragEl = again;
+                    again.dataset.dragging = '1';
+                    again.style.opacity = '0.55';
+                    again.style.transform = 'scale(1.06)';
+                }
+            }
+            break;
+        }
+    }
+}
+
+function endDrag() {
+    if (_dragEl) {
+        _dragEl.style.opacity = '';
+        _dragEl.style.transform = '';
+        const el = _dragEl;
+        setTimeout(function(){ if (el) el.dataset.dragging = '0'; }, 60);
+    }
+    _dragIdx = null; _dragEl = null;
 }
 function addNewSlot() {
     const list = loadSlotList();
@@ -272,16 +338,25 @@ function renameCurrentSlot() {
     renderSlotNav();
 }
 function deleteCurrentSlot() {
-    if (!slotId) return;
     const list = loadSlotList();
     let cur = null;
     list.forEach(function(s){ if (s.id === slotId) cur = s; });
     if (!cur) return;
-    if (!confirm('[ ' + cur.name + ' ] 시간표를 삭제할까요?\n입력한 시간 데이터도 함께 지워집니다.')) return;
+
+    // 마지막 하나만 남았으면 삭제 대신 내용 비우기
+    if (list.length <= 1) {
+        if (!confirm('[ ' + (cur.name || KIND_KEY) + ' ]\n마지막 시간표라 삭제할 수 없습니다.\n입력한 내용만 모두 지울까요?')) return;
+        try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+        location.reload();
+        return;
+    }
+
+    if (!confirm('[ ' + (cur.name || KIND_KEY) + ' ] 시간표를 삭제할까요?\n입력한 시간 데이터도 함께 지워집니다.')) return;
     try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+
     const rest = list.filter(function(s){ return s.id !== slotId; });
-    saveSlotList(rest.length ? rest : [{ id: '', name: KIND_KEY }]);
-    goSlot('');
+    saveSlotList(rest);
+    goSlot(rest[0].id);   // 남은 첫 시간표로 이동
 }
 
 window.addEventListener('DOMContentLoaded', function() {
@@ -437,27 +512,9 @@ function render(){
     else if(currentView==='am') renderAM(c);
     else if(currentView==='pm') renderPM(c);
     else renderInput(c);
-    fitCellFont();
     updatePrintContainer();
 }
 
-// 실제 셀 폭을 재서 글자 크기를 맞춘다
-function fitCellFont(){
-    try {
-        const depCell = document.querySelector('#content td.dep');
-        const w = depCell ? depCell.getBoundingClientRect().width : 0;
-        if (!w) return;
-        let fsTime = Math.floor(w / (5 * 0.58));
-        fsTime = Math.max(9, Math.min(15, fsTime));
-        let fsSub = Math.floor((w / 2) / (5 * 0.56));
-        fsSub = Math.max(7, Math.min(11, fsSub));
-        const root = document.documentElement;
-        root.style.setProperty('--fs-time', fsTime + 'px');
-        root.style.setProperty('--fs-sub2', fsSub + 'px');
-    } catch(e) {}
-}
-window.addEventListener('resize', function(){ setTimeout(fitCellFont, 80); });
-window.addEventListener('orientationchange', function(){ setTimeout(fitCellFont, 200); });
 
 function updatePrintContainer() {
     let pc = document.getElementById('print-container');
@@ -537,7 +594,7 @@ function getTableHTML(period, startTrip, endTrip, isInput) {
     if(trips.length === 0) return '';
     
     let minW = isInput ? (trips.length * 18) : (trips.length * 16);
-    let h = `<table class="input-table" style="min-width:${Math.max(100, minW)}%">${thead(startTrip, endTrip, isInput)}<tbody>`;
+    let h = `<table class="input-table" style="min-width:${isInput ? (26 + (endTrip-startTrip+1)*116) : (30 + (endTrip-startTrip+1)*78 + Math.max(0,endTrip-startTrip)*26)}px">${thead(startTrip, endTrip, isInput)}<tbody>`;
     for(let b=1; b<=busCount; b++) {
         let slots = trips.map(t => gs(b, t));
         h += busRows(b, slots, isInput, period);
