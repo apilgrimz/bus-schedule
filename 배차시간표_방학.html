@@ -110,7 +110,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-1500</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0115</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -981,7 +981,7 @@ async function captureAndShare(target) {
     else if (target === 'split') targetMax = actualTrips.maxAm + actualTrips.maxPm;  // 좌우 나란히
 
     // 순번 열 + (회차 × 셀폭) + 휴식 열
-    const SEQ_W = 60, TRIP_W = 105, REST_W = 34;
+    const SEQ_W = 50, TRIP_W = 92, REST_W = 30;
     let reqWidth = SEQ_W + targetMax * TRIP_W
                  + (getExportRestOption() ? (targetMax - 1) * REST_W : 0);
     if (target === 'split') reqWidth += SEQ_W;   // 좌우 배치는 순번 열이 두 개

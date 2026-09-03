@@ -111,7 +111,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0902-1500</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0115</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -852,7 +852,7 @@ async function captureAndShare(target) {
     else if(target === 'am') targetCols = actualTrips.maxAm;
     else if(target === 'pm') targetCols = actualTrips.maxPm;
 
-    const SEQ_W = 60, TRIP_W = 105, REST_W = 34;
+    const SEQ_W = 50, TRIP_W = 92, REST_W = 30;
     const reqWidth = Math.max(520, SEQ_W + targetCols * TRIP_W
                      + (getExportRestOption() ? (targetCols - 1) * REST_W : 0));
 
