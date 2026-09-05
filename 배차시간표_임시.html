@@ -111,7 +111,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0410</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0458</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -225,6 +225,7 @@ function goSlot(id) {
 function renderSlotNav() {
     const nav = document.getElementById('slotNav');
     if (!nav) return;
+    const _keepScroll = nav.scrollLeft;          // 현재 스크롤 위치 기억
     nav.querySelectorAll('.slot-item').forEach(function(el){ el.remove(); });
     const list = loadSlotList();
     list.forEach(function(slot, idx) {
@@ -257,6 +258,17 @@ function renderSlotNav() {
     del.title = '현재 시간표 삭제';
     del.onclick = deleteCurrentSlot;
     nav.appendChild(del);
+
+    // 스크롤 위치 복원 — 선택된 항목이 안 보이면 그 위치로
+    nav.scrollLeft = _keepScroll;
+    const act = nav.querySelector('.slot-btn-item.active');
+    if (act) {
+        const nr = nav.getBoundingClientRect();
+        const ar = act.getBoundingClientRect();
+        if (ar.left < nr.left || ar.right > nr.right) {
+            nav.scrollLeft = act.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
+        }
+    }
 }
 
 // ── 길게 눌러 순서 변경 ──
@@ -393,6 +405,17 @@ window.addEventListener('DOMContentLoaded', function() {
         document.getElementById('appTitle').innerText = busNum + '번 ' + cur.name;
     }
     renderSlotNav();
+    // 선택된 시간표가 화면 밖이면 보이도록 스크롤
+    setTimeout(function(){
+        const nav = document.getElementById('slotNav');
+        const act = nav ? nav.querySelector('.slot-btn-item.active') : null;
+        if (nav && act) {
+            const nr = nav.getBoundingClientRect(), ar = act.getBoundingClientRect();
+            if (ar.left < nr.left || ar.right > nr.right) {
+                nav.scrollLeft = act.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
+            }
+        }
+    }, 60);
 });
 
 let busCount=16, ratio=0.525, amTrip=3, pmTrip=3, currentView='integrated';

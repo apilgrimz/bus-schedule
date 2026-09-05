@@ -110,7 +110,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0410</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0458</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -244,6 +244,7 @@ function goSlot(id) {
 function renderSlotNav() {
     const nav = document.getElementById('slotNav');
     if (!nav) return;
+    const _keepScroll = nav.scrollLeft;          // 현재 스크롤 위치 기억
     nav.querySelectorAll('.slot-item').forEach(function(el){ el.remove(); });
 
     const list = loadSlotList();
@@ -281,6 +282,17 @@ function renderSlotNav() {
     del.title = '현재 시간표 삭제';
     del.onclick = deleteCurrentSlot;
     nav.appendChild(del);
+
+    // 스크롤 위치 복원 — 선택된 항목이 안 보이면 그 위치로
+    nav.scrollLeft = _keepScroll;
+    const act = nav.querySelector('.slot-btn-item.active');
+    if (act) {
+        const nr = nav.getBoundingClientRect();
+        const ar = act.getBoundingClientRect();
+        if (ar.left < nr.left || ar.right > nr.right) {
+            nav.scrollLeft = act.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
+        }
+    }
 }
 
 // ── 길게 눌러 순서 변경 ──
@@ -419,6 +431,17 @@ window.addEventListener('DOMContentLoaded', function() {
         document.getElementById('appTitle').innerText = busNum + '번 ' + cur.name;
     }
     renderSlotNav();
+    // 선택된 시간표가 화면 밖이면 보이도록 스크롤
+    setTimeout(function(){
+        const nav = document.getElementById('slotNav');
+        const act = nav ? nav.querySelector('.slot-btn-item.active') : null;
+        if (nav && act) {
+            const nr = nav.getBoundingClientRect(), ar = act.getBoundingClientRect();
+            if (ar.left < nr.left || ar.right > nr.right) {
+                nav.scrollLeft = act.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
+            }
+        }
+    }, 60);
 });
 
 let busCount=16, ratio=0.525, pmTrip=3, pmBus=4, maxTrip=6, currentView='integrated';
@@ -839,11 +862,20 @@ function getScheduleHTML(target) {
     let hasAnyTT = false;
     for(let key in tts) { if(tts[key] && String(tts[key]).trim() !== '') { hasAnyTT = true; break; } }
 
-    // 4배 확대 시 정수 픽셀이 되도록 0.25 단위로 맞춤 (선 겹침 방지)
-    const rawCellHeight = 730 / ( (hasAnyTT ? busCount * 3 : busCount) + 1 );
+    const actualTrips = getActualAmPmTrips();
+
+    // 회차 수가 적으면 표 폭이 좁아지므로 높이도 함께 줄여 비율을 맞춘다.
+    // (6회차 792px 기준, 4배 확대 시 정수가 되도록 0.25 단위로 맞춤)
+    const _tripsForW = (target === 'am') ? actualTrips.maxAm
+                     : (target === 'pm') ? actualTrips.maxPm
+                     : (target === 'split') ? (actualTrips.maxAm + actualTrips.maxPm)
+                     : actualTrips.maxInt;
+    const _wRef = Math.max(520, 50 + _tripsForW * 92 + Math.max(0, _tripsForW - 1) * 30) + 40;
+    let _base = 730 * (_wRef / 792);
+    _base = Math.max(520, Math.min(730, _base));
+    const rawCellHeight = _base / ( (hasAnyTT ? busCount * 3 : busCount) + 1 );
     const exactCellHeight = Math.round(rawCellHeight * 4) / 4; 
     
-    const actualTrips = getActualAmPmTrips();
     let targetMax = actualTrips.maxInt;
     if (target === 'am') targetMax = actualTrips.maxAm;
     else if (target === 'pm') targetMax = actualTrips.maxPm;
