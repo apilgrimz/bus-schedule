@@ -23,7 +23,7 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 .tab.print-btn { background:#10b981; color:#fff; } 
 .tab.share-btn { background:#8b5cf6; color:#fff; }
 
-.quick-nav { display: flex; background: #fff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; align-items: center; }
+.quick-nav { display: flex; background: #fff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #e2e8f0; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; flex-shrink: 0; align-items: center; scroll-behavior: auto; overflow-anchor: none; }
 .quick-nav::-webkit-scrollbar { height: 0px; background: transparent; }
 .nav-btn { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-decoration: none; color: #4a5568; background: #edf2f7; border: 1px solid #cbd5e0; cursor: pointer; flex-shrink:0; -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 .nav-btn.active { background: #475569; color: #fff; border-color: #475569; }
@@ -111,7 +111,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0458</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0515</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -220,6 +220,10 @@ function saveSlotList(arr) {
     try { localStorage.setItem(slotsStoreKey(), JSON.stringify(arr)); } catch(e) {}
 }
 function goSlot(id) {
+    try {
+        const nav = document.getElementById('slotNav');
+        if (nav) sessionStorage.setItem('slotScroll_' + KIND_KEY, String(nav.scrollLeft));
+    } catch(e) {}
     location.replace(id ? (SELF_FILE + '?id=' + encodeURIComponent(id)) : SELF_FILE);
 }
 function renderSlotNav() {
@@ -259,17 +263,30 @@ function renderSlotNav() {
     del.onclick = deleteCurrentSlot;
     nav.appendChild(del);
 
-    // 스크롤 위치 복원 — 선택된 항목이 안 보이면 그 위치로
-    nav.scrollLeft = _keepScroll;
+    // 스크롤 위치 복원
+    let _target = _keepScroll;
+    if (!_restoredOnce) {
+        // 페이지 새로 열린 직후: 이전 화면에서 저장한 위치 사용
+        try {
+            const saved = sessionStorage.getItem('slotScroll_' + KIND_KEY);
+            if (saved !== null) _target = Number(saved) || 0;
+        } catch(e) {}
+        _restoredOnce = true;
+    }
+    nav.scrollLeft = _target;
+
+    // 선택 항목이 화면 밖이면 보이도록 보정
     const act = nav.querySelector('.slot-btn-item.active');
     if (act) {
-        const nr = nav.getBoundingClientRect();
-        const ar = act.getBoundingClientRect();
-        if (ar.left < nr.left || ar.right > nr.right) {
-            nav.scrollLeft = act.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
+        const navW = nav.clientWidth;
+        const left = act.offsetLeft, right = left + act.offsetWidth;
+        if (left < nav.scrollLeft || right > nav.scrollLeft + navW) {
+            nav.scrollLeft = left - (navW - act.offsetWidth) / 2;
         }
     }
 }
+
+let _restoredOnce = false;   // 페이지 진입 후 첫 복원 여부
 
 // ── 길게 눌러 순서 변경 ──
 let _dragIdx = null, _dragTimer = null, _dragEl = null;
@@ -405,17 +422,6 @@ window.addEventListener('DOMContentLoaded', function() {
         document.getElementById('appTitle').innerText = busNum + '번 ' + cur.name;
     }
     renderSlotNav();
-    // 선택된 시간표가 화면 밖이면 보이도록 스크롤
-    setTimeout(function(){
-        const nav = document.getElementById('slotNav');
-        const act = nav ? nav.querySelector('.slot-btn-item.active') : null;
-        if (nav && act) {
-            const nr = nav.getBoundingClientRect(), ar = act.getBoundingClientRect();
-            if (ar.left < nr.left || ar.right > nr.right) {
-                nav.scrollLeft = act.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
-            }
-        }
-    }, 60);
 });
 
 let busCount=16, ratio=0.525, amTrip=3, pmTrip=3, currentView='integrated';
