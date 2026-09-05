@@ -49,11 +49,11 @@ td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
 :root { --fs-time: 12.5px; --fs-sub2: 9.5px; }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-td.dep { font-size: var(--fs-time); font-weight: 600; color: #1d4ed8; padding: 2px 0; }
-td.arr { font-size: var(--fs-time); font-weight: 600; color: #0f766e; padding: 2px 0; }
+td.dep { font-size: var(--fs-time); font-weight: 600; color: #1d4ed8; padding: 0; line-height: 1.9; }
+td.arr { font-size: var(--fs-time); font-weight: 600; color: #0f766e; padding: 0; line-height: 1.9; }
 td.dep-s { color:#dc2626; font-weight:700; }
 /* [수정] 폰트 9.5px 살짝 축소 */
-td.tt, td.hj { font-size: var(--fs-sub2); font-weight: 500; letter-spacing: -0.3px; color: #334155; white-space: nowrap; overflow: hidden; padding: 2px 0; line-height: 1.2; }
+td.tt, td.hj { font-size: var(--fs-sub2); font-weight: 500; letter-spacing: -0.3px; color: #334155; white-space: nowrap; overflow: hidden; padding: 0; line-height: 2.1; }
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
@@ -111,7 +111,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0348</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0349</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -138,6 +138,15 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
     <div class="modal-row"><label style="color:#1e40af;">오전 횟수</label><div><input id="s-am" type="number" style="width:45px">회</div></div>
     <div class="modal-row"><label style="color:#991b1b;">오후 횟수</label><div><input id="s-pm" type="number" style="width:45px">회</div></div>
     
+    <div style="border-top:1px solid #eee; margin:15px 0; padding-top:12px;">
+        <label style="font-size:13px; font-weight:bold; color:#334155; display:block; text-align:left; margin-bottom:6px;">🖨️ 인쇄·사진 제목</label>
+        <input type="text" id="s-title" placeholder="(비우면 기본: 101번 배차 시간표(임시))"
+               style="width:100%; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; box-sizing:border-box; margin-bottom:6px;">
+        <input type="text" id="s-subtitle" placeholder="(비우면 기본: 운행대수: 16대)"
+               style="width:100%; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; box-sizing:border-box;">
+        <p style="font-size:10px; color:#94a3b8; margin:6px 0 0; text-align:left;">비워두면 기존 방식대로 자동 표시됩니다.</p>
+    </div>
+
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:15px;">
         <p style="font-size:11px; color:#666; margin-bottom:10px; text-align:left;">⚠️ 임시 데이터 백업/복구</p>
         <div style="display:flex; gap:8px;">
@@ -387,6 +396,7 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 let busCount=16, ratio=0.525, amTrip=3, pmTrip=3, currentView='integrated';
+let customTitle='', customSubtitle='';
 const deps={}, tts={}, busNamesAM={}, busNamesPM={};
 
 function loadData() {
@@ -399,12 +409,14 @@ function loadData() {
         pmTrip = parsed.pmTrip || 3;
         Object.assign(deps, parsed.deps || {});
         Object.assign(tts, parsed.tts || {});
+        customTitle = parsed.customTitle || '';
+        customSubtitle = parsed.customSubtitle || '';
         Object.assign(busNamesAM, parsed.busNamesAM || {});
         Object.assign(busNamesPM, parsed.busNamesPM || {});
     }
 }
 
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, amTrip, pmTrip, deps, tts, busNamesAM, busNamesPM })); }
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, amTrip, pmTrip, deps, tts, busNamesAM, busNamesPM, customTitle, customSubtitle })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
@@ -681,6 +693,8 @@ function openSettings(){
     document.getElementById('s-rt').value=ratio;
     document.getElementById('s-am').value=amTrip; 
     document.getElementById('s-pm').value=pmTrip;
+    const _t=document.getElementById('s-title'); if(_t) _t.value = customTitle || '';
+    const _s=document.getElementById('s-subtitle'); if(_s) _s.value = customSubtitle || '';
     document.getElementById('modal-bg').classList.remove('hidden');
 }
 function closeSettings(){document.getElementById('modal-bg').classList.add('hidden');}
@@ -689,6 +703,8 @@ function applySettings(){
     ratio=Number(document.getElementById('s-rt').value);
     amTrip=Number(document.getElementById('s-am').value) || 3; 
     pmTrip=Number(document.getElementById('s-pm').value) || 3;
+    const _t=document.getElementById('s-title'); customTitle = _t ? _t.value.trim() : '';
+    const _s=document.getElementById('s-subtitle'); customSubtitle = _s ? _s.value.trim() : '';
     closeSettings(); saveData(); schedule=compute(); render();
 }
 
@@ -734,9 +750,9 @@ function getActualAmPmTrips() {
 }
 
 function getScheduleHTML(target) {
-    const exportTitle = `${busNum}번 배차 시간표(임시)`;
+    const exportTitle = customTitle || `${busNum}번 배차 시간표(임시)`;
     
-    let subtitleText = `운행대수: ${busCount}대`;
+    let subtitleText = customSubtitle || `운행대수: ${busCount}대`;
     let contentHTML = `<h2 style="text-align:center; margin:0 0 5px 0; padding:0; line-height:1.05; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
     contentHTML += `<div style="text-align:center; margin:0 0 6px 0; padding:0; line-height:1.1; font-size:16px; font-weight:bold; color:#333;">${subtitleText}</div>`;
 
@@ -788,7 +804,7 @@ function getScheduleHTML(target) {
         .x-th { background:#e2e8f0 !important; background-clip:padding-box; border:0.25px solid #b4bfcc; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 50px; }
         
-        .x-td { border:0.25px solid #b4bfcc; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:var(--cell-height); overflow:hidden; white-space:nowrap; }
+        .x-td { border:0.25px solid #b4bfcc; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
         .x-dep { font-size:var(--fs-dep); font-weight:600; color:#1d4ed8; }
@@ -818,8 +834,8 @@ function getScheduleHTML(target) {
             /* 선 규칙은 전역 @media print 에서 border 로 일괄 처리 */
 
             /* 인쇄 시 글자 가늘게 + 내부 테두리 얇게 */
-            .x-dep, .x-arr { font-weight: 500 !important; }
-            .x-tt, .x-hj, .x-rest { font-weight: 400 !important; }
+            .x-dep, .x-arr { font-weight: 600 !important; }
+            .x-tt, .x-hj, .x-rest { font-weight: 500 !important; }
             .x-seq { font-weight: 600 !important; }
             .x-th { font-weight: 600 !important; }
         }

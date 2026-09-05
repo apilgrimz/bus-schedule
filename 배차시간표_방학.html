@@ -49,10 +49,10 @@ td { border:1px solid #cbd5e1; text-align:center; padding:1px; font-size:11px }
 :root { --fs-time: 12.5px; --fs-sub2: 9.5px; }
 td.rest-bad { background:#fee2e2; color:#b91c1c }
 
-td.dep { font-size: var(--fs-time); font-weight: 600; color: #1d4ed8; padding: 2px 0; }
-td.arr { font-size: var(--fs-time); font-weight: 600; color: #0f766e; padding: 2px 0; }
+td.dep { font-size: var(--fs-time); font-weight: 600; color: #1d4ed8; padding: 0; line-height: 1.9; }
+td.arr { font-size: var(--fs-time); font-weight: 600; color: #0f766e; padding: 0; line-height: 1.9; }
 td.dep-s { color:#dc2626; font-weight:700; }
-td.tt, td.hj { font-size: var(--fs-sub2); font-weight: 500; letter-spacing: -0.3px; color: #334155; white-space: nowrap; overflow: hidden; padding: 2px 0; line-height: 1.2; }
+td.tt, td.hj { font-size: var(--fs-sub2); font-weight: 500; letter-spacing: -0.3px; color: #334155; white-space: nowrap; overflow: hidden; padding: 0; line-height: 2.1; }
 
 table tbody tr.bus-start td { border-top: 1px solid #9ca3af !important; }
 
@@ -110,7 +110,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0903-0348</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0349</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -136,6 +136,15 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
     <div class="modal-row"><label>오후시작</label><div><input id="s-pt" type="number" style="width:45px">회<input id="s-pb" type="number" style="width:45px">번</div></div>
     <div class="modal-row"><label style="color:#2563eb;">총운행횟수</label><div><input id="s-mt" type="number" style="width:45px">회</div></div>
     
+    <div style="border-top:1px solid #eee; margin:15px 0; padding-top:12px;">
+        <label style="font-size:13px; font-weight:bold; color:#334155; display:block; text-align:left; margin-bottom:6px;">🖨️ 인쇄·사진 제목</label>
+        <input type="text" id="s-title" placeholder="(비우면 기본: 101번 배차 시간표(평일))"
+               style="width:100%; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; box-sizing:border-box; margin-bottom:6px;">
+        <input type="text" id="s-subtitle" placeholder="(비우면 기본: 운행대수: 16대)"
+               style="width:100%; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; box-sizing:border-box;">
+        <p style="font-size:10px; color:#94a3b8; margin:6px 0 0; text-align:left;">비워두면 기존 방식대로 자동 표시됩니다.</p>
+    </div>
+
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:12px;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
             <label style="font-size:13px; font-weight:bold; color:#334155;">🎨 조 구분 색상</label>
@@ -427,10 +436,12 @@ function loadData() {
         Object.assign(deps, parsed.deps || {});
         Object.assign(tts, parsed.tts || {});
         crews = Array.isArray(parsed.crews) ? parsed.crews : [];
+        customTitle = parsed.customTitle || '';
+        customSubtitle = parsed.customSubtitle || '';
     }
 }
 
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, maxTrip, deps, tts, crews })); }
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, pmTrip, pmBus, maxTrip, deps, tts, crews, customTitle, customSubtitle })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
@@ -667,6 +678,8 @@ function switchView(v){
 // ── 조 구분 색상 ──
 const CREW_COLORS = ['#dbeafe', '#dcfce7', '#fef3c7'];   // 파랑 / 초록 / 노랑
 let crews = [];   // [{ half:'am'|'pm', bus:8, color:0 }]
+let customTitle = '';      // 인쇄·사진 제목 (비우면 자동)
+let customSubtitle = '';   // 인쇄·사진 부제목 (비우면 자동)
 
 function renderCrewList(){
     const box = document.getElementById('crewList');
@@ -730,6 +743,8 @@ function openSettings(){
     document.getElementById('s-pt').value=pmTrip; 
     document.getElementById('s-pb').value=pmBus;
     document.getElementById('s-mt').value=maxTrip; 
+    const _t=document.getElementById('s-title'); if(_t) _t.value = customTitle || '';
+    const _s=document.getElementById('s-subtitle'); if(_s) _s.value = customSubtitle || '';
     renderCrewList();
     document.getElementById('modal-bg').classList.remove('hidden');
 }
@@ -741,6 +756,8 @@ function applySettings(){
     pmBus=Number(document.getElementById('s-pb').value);
     maxTrip=Number(document.getElementById('s-mt').value) || 6; 
     crews = crews.filter(function(cw){ return cw.bus >= 1 && cw.bus <= busCount; });
+    const _t=document.getElementById('s-title'); customTitle = _t ? _t.value.trim() : '';
+    const _s=document.getElementById('s-subtitle'); customSubtitle = _s ? _s.value.trim() : '';
     closeSettings(); saveData(); schedule=compute(); render();
 }
 
@@ -789,13 +806,18 @@ function getActualAmPmTrips() {
 }
 
 function getScheduleHTML(target) {
-    const exportTitle = `${busNum}번 배차 시간표(${displayTitle})`;
-    
+    const exportTitle = customTitle || `${busNum}번 배차 시간표(${displayTitle})`;
+
     let subtitleText = '';
-    if (target === 'am') subtitleText = `[ 오 전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else if (target === 'pm') subtitleText = `[ 오 후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
-    else if (target === 'split') subtitleText = `운행대수: ${busCount}대`; 
-    else subtitleText = `운행대수: ${busCount}대`;
+    if (customSubtitle) {
+        if (target === 'am') subtitleText = `[ 오 전 ] &nbsp;|&nbsp; ${customSubtitle}`;
+        else if (target === 'pm') subtitleText = `[ 오 후 ] &nbsp;|&nbsp; ${customSubtitle}`;
+        else subtitleText = customSubtitle;
+    } else {
+        if (target === 'am') subtitleText = `[ 오 전 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+        else if (target === 'pm') subtitleText = `[ 오 후 ] &nbsp;|&nbsp; 운행대수: ${busCount}대`;
+        else subtitleText = `운행대수: ${busCount}대`;
+    }
 
     let contentHTML = `<h2 style="text-align:center; margin:0 0 5px 0; padding:0; line-height:1.05; font-size:28px; color:#000; font-weight:900;">${exportTitle}</h2>`;
     contentHTML += `<div style="text-align:center; margin:0 0 6px 0; padding:0; line-height:1.1; font-size:16px; font-weight:bold; color:#333;">${subtitleText}</div>`;
@@ -852,7 +874,7 @@ function getScheduleHTML(target) {
         .x-th { background:#e2e8f0 !important; background-clip:padding-box; border:0.25px solid #b4bfcc; border-bottom: 1px solid #9ca3af !important; text-align:center; font-size:var(--th-fs); font-weight:700; height:var(--th-height); color:#0f172a; }
         .x-th-seq { border-right: 1px solid #9ca3af !important; width: 40px; }
         
-        .x-td { border:0.25px solid #b4bfcc; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:var(--cell-height); overflow:hidden; white-space:nowrap; }
+        .x-td { border:0.25px solid #b4bfcc; text-align:center; vertical-align:middle; height:var(--cell-height); padding:0; line-height:1; overflow:hidden; white-space:nowrap; }
         
         .x-seq { font-weight:900; background:#f8fafc !important; font-size:var(--fs-seq); border-right:1px solid #9ca3af !important; color:#0f172a; }
         .x-dep { font-size:var(--fs-dep); font-weight:600; color:#1d4ed8; }
@@ -896,8 +918,8 @@ function getScheduleHTML(target) {
             /* 선 규칙은 전역 @media print 에서 border 로 일괄 처리 (여기서 중복 지정 금지) */
 
             /* 인쇄 시 글자 가늘게 — 잉크 번짐 방지 */
-            .x-dep, .x-arr { font-weight: 500 !important; }
-            .x-tt, .x-hj, .x-rest { font-weight: 400 !important; }
+            .x-dep, .x-arr { font-weight: 600 !important; }
+            .x-tt, .x-hj, .x-rest { font-weight: 500 !important; }
             .x-seq { font-weight: 600 !important; }
             .x-th { font-weight: 600 !important; }
 
