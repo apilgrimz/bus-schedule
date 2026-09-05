@@ -63,7 +63,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 .name-input::placeholder { color: #94a3b8; font-weight: normal; font-size:11px; }
 
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
-.modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
+.modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; max-height:calc(100vh - 32px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
 .modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; text-align:left; }
 .modal-row input { width:64px; height:40px; border:2px solid #94a3b8; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
@@ -111,7 +111,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0349</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0410</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -140,11 +140,11 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
     
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:12px;">
         <label style="font-size:13px; font-weight:bold; color:#334155; display:block; text-align:left; margin-bottom:6px;">🖨️ 인쇄·사진 제목</label>
-        <input type="text" id="s-title" placeholder="(비우면 기본: 101번 배차 시간표(임시))"
+        <input type="text" id="s-title" placeholder="제목을 입력하세요"
                style="width:100%; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; box-sizing:border-box; margin-bottom:6px;">
-        <input type="text" id="s-subtitle" placeholder="(비우면 기본: 운행대수: 16대)"
+        <input type="text" id="s-subtitle" placeholder="부제목을 입력하세요"
                style="width:100%; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; box-sizing:border-box;">
-        <p style="font-size:10px; color:#94a3b8; margin:6px 0 0; text-align:left;">비워두면 기존 방식대로 자동 표시됩니다.</p>
+        <p style="font-size:10px; color:#94a3b8; margin:6px 0 0; text-align:left;">현재 값이 표시됩니다. 수정하거나 비우면 자동 문구로 돌아갑니다.</p>
     </div>
 
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:15px;">
@@ -396,6 +396,7 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 let busCount=16, ratio=0.525, amTrip=3, pmTrip=3, currentView='integrated';
+let _openedAutoTitle=null, _openedAutoSub=null;
 let customTitle='', customSubtitle='';
 const deps={}, tts={}, busNamesAM={}, busNamesPM={};
 
@@ -693,8 +694,12 @@ function openSettings(){
     document.getElementById('s-rt').value=ratio;
     document.getElementById('s-am').value=amTrip; 
     document.getElementById('s-pm').value=pmTrip;
-    const _t=document.getElementById('s-title'); if(_t) _t.value = customTitle || '';
-    const _s=document.getElementById('s-subtitle'); if(_s) _s.value = customSubtitle || '';
+    const _t=document.getElementById('s-title');
+    if(_t) _t.value = customTitle || (busNum + '번 배차 시간표(임시)');
+    const _s=document.getElementById('s-subtitle');
+    if(_s) _s.value = customSubtitle || ('운행대수: ' + busCount + '대');
+    _openedAutoTitle = customTitle ? null : (_t ? _t.value : '');
+    _openedAutoSub   = customSubtitle ? null : (_s ? _s.value : '');
     document.getElementById('modal-bg').classList.remove('hidden');
 }
 function closeSettings(){document.getElementById('modal-bg').classList.add('hidden');}
@@ -703,8 +708,15 @@ function applySettings(){
     ratio=Number(document.getElementById('s-rt').value);
     amTrip=Number(document.getElementById('s-am').value) || 3; 
     pmTrip=Number(document.getElementById('s-pm').value) || 3;
-    const _t=document.getElementById('s-title'); customTitle = _t ? _t.value.trim() : '';
-    const _s=document.getElementById('s-subtitle'); customSubtitle = _s ? _s.value.trim() : '';
+    const _t=document.getElementById('s-title');
+    const _tv = _t ? _t.value.trim() : '';
+    const _tAuto = busNum + '번 배차 시간표(임시)';
+    customTitle = (!_tv || _tv === _tAuto || _tv === _openedAutoTitle) ? '' : _tv;
+    const _s=document.getElementById('s-subtitle');
+    const _sv = _s ? _s.value.trim() : '';
+    const _sAuto = '운행대수: ' + busCount + '대';
+    customSubtitle = (!_sv || _sv === _sAuto || _sv === _openedAutoSub) ? '' : _sv;
+    
     closeSettings(); saveData(); schedule=compute(); render();
 }
 

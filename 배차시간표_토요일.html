@@ -62,7 +62,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 
 .input-table input { width:100%; text-align:center; border:none; background:transparent; outline:none; font-size:12px; font-weight:600; padding:6px 2px; color:#1d4ed8 }
 .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px }
-.modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
+.modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; max-height:calc(100vh - 32px); overflow-y:auto; -webkit-overflow-scrolling:touch; }
 .modal-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; text-align:left; }
 .modal-row input { width:64px; height:40px; border:2px solid #93c5fd; border-radius:8px; text-align:center; font-size:16px; font-weight:bold; }
 .hidden { display:none }
@@ -110,7 +110,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0349</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0410</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -138,11 +138,11 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
     
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:12px;">
         <label style="font-size:13px; font-weight:bold; color:#334155; display:block; text-align:left; margin-bottom:6px;">🖨️ 인쇄·사진 제목</label>
-        <input type="text" id="s-title" placeholder="(비우면 기본: 101번 배차 시간표(평일))"
+        <input type="text" id="s-title" placeholder="제목을 입력하세요"
                style="width:100%; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; box-sizing:border-box; margin-bottom:6px;">
-        <input type="text" id="s-subtitle" placeholder="(비우면 기본: 운행대수: 16대)"
+        <input type="text" id="s-subtitle" placeholder="부제목을 입력하세요"
                style="width:100%; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; box-sizing:border-box;">
-        <p style="font-size:10px; color:#94a3b8; margin:6px 0 0; text-align:left;">비워두면 기존 방식대로 자동 표시됩니다.</p>
+        <p style="font-size:10px; color:#94a3b8; margin:6px 0 0; text-align:left;">현재 값이 표시됩니다. 수정하거나 비우면 자동 문구로 돌아갑니다.</p>
     </div>
 
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:12px;">
@@ -678,6 +678,7 @@ function switchView(v){
 // ── 조 구분 색상 ──
 const CREW_COLORS = ['#dbeafe', '#dcfce7', '#fef3c7'];   // 파랑 / 초록 / 노랑
 let crews = [];   // [{ half:'am'|'pm', bus:8, color:0 }]
+let _openedAutoTitle = null, _openedAutoSub = null;   // 설정창 열 때의 자동 문구
 let customTitle = '';      // 인쇄·사진 제목 (비우면 자동)
 let customSubtitle = '';   // 인쇄·사진 부제목 (비우면 자동)
 
@@ -743,8 +744,13 @@ function openSettings(){
     document.getElementById('s-pt').value=pmTrip; 
     document.getElementById('s-pb').value=pmBus;
     document.getElementById('s-mt').value=maxTrip; 
-    const _t=document.getElementById('s-title'); if(_t) _t.value = customTitle || '';
-    const _s=document.getElementById('s-subtitle'); if(_s) _s.value = customSubtitle || '';
+    const _t=document.getElementById('s-title');
+    if(_t) _t.value = customTitle || (busNum + '번 배차 시간표(' + displayTitle + ')');
+    const _s=document.getElementById('s-subtitle');
+    if(_s) _s.value = customSubtitle || ('운행대수: ' + busCount + '대');
+    // 열었을 때의 자동 문구를 기억 (수정 안 하면 자동으로 유지)
+    _openedAutoTitle = customTitle ? null : (_t ? _t.value : '');
+    _openedAutoSub   = customSubtitle ? null : (_s ? _s.value : '');
     renderCrewList();
     document.getElementById('modal-bg').classList.remove('hidden');
 }
@@ -756,8 +762,16 @@ function applySettings(){
     pmBus=Number(document.getElementById('s-pb').value);
     maxTrip=Number(document.getElementById('s-mt').value) || 6; 
     crews = crews.filter(function(cw){ return cw.bus >= 1 && cw.bus <= busCount; });
-    const _t=document.getElementById('s-title'); customTitle = _t ? _t.value.trim() : '';
-    const _s=document.getElementById('s-subtitle'); customSubtitle = _s ? _s.value.trim() : '';
+    // 자동 문구와 같으면 저장하지 않음 (설정 바뀌면 자동으로 따라가도록)
+    const _t=document.getElementById('s-title');
+    const _tv = _t ? _t.value.trim() : '';
+    const _tAuto = busNum + '번 배차 시간표(' + displayTitle + ')';
+    customTitle = (!_tv || _tv === _tAuto || _tv === _openedAutoTitle) ? '' : _tv;
+
+    const _s=document.getElementById('s-subtitle');
+    const _sv = _s ? _s.value.trim() : '';
+    const _sAuto = '운행대수: ' + busCount + '대';
+    customSubtitle = (!_sv || _sv === _sAuto || _sv === _openedAutoSub) ? '' : _sv;
     closeSettings(); saveData(); schedule=compute(); render();
 }
 
