@@ -171,6 +171,7 @@
               }
               if (k === 'slots_v1_' + n) mine = true;
               if (k.indexOf('slots_v1_' + n + '_') === 0) mine = true;
+              if (k === 'busRoster_v1_' + n) mine = true;   // 노선 차량 명단
               if (mine) keys.push(k);
           }
           return keys;

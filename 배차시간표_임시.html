@@ -37,6 +37,11 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
 
 .infobar { padding:4px 12px; background:#f1f5f9; font-size:10px; color:#334155; display:flex; gap:12px; flex-shrink:0; border-bottom: 1px solid #cbd5e1; }
 .infobar b { font-weight:bold; color:#0f172a; }
+.rchip { display:inline-block; padding:6px 10px; margin:3px; border-radius:8px; border:1.5px solid #94a3b8;
+         background:#fff; color:#1e293b; font-size:13px; font-weight:bold; cursor:pointer; line-height:1.2;
+         user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+.rchip.out { background:#f1f5f9; color:#b6c0cc; border-color:#e2e8f0; text-decoration:line-through; }
+.rchip.first { background:#1e40af; color:#fff; border-color:#1e3a8a; }
 .content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
 
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
@@ -111,7 +116,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0905-0515</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0928-1934</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -137,6 +142,10 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
     <div class="modal-row"><label>회차지비율</label><input id="s-rt" type="text" style="width:80px"></div>
     <div class="modal-row"><label style="color:#1e40af;">오전 횟수</label><div><input id="s-am" type="number" style="width:45px">회</div></div>
     <div class="modal-row"><label style="color:#991b1b;">오후 횟수</label><div><input id="s-pm" type="number" style="width:45px">회</div></div>
+
+    <div style="border-top:1px solid #eee; margin:12px 0 0; padding-top:12px;">
+        <button onclick="openRoster()" style="width:100%; padding:11px; font-size:13px; font-weight:bold; border-radius:8px; border:1.5px solid #1e40af; background:#eff6ff; color:#1e40af;">🚌 차량 번호 자동 배정</button>
+    </div>
     
     <div style="border-top:1px solid #eee; margin:15px 0; padding-top:12px;">
         <label style="font-size:13px; font-weight:bold; color:#334155; display:block; text-align:left; margin-bottom:6px;">🖨️ 인쇄·사진 제목</label>
@@ -159,6 +168,52 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
     <div style="display:flex; gap:10px; margin-top:10px;">
         <button style="flex:1; padding:12px; border-radius:8px; border:none; background:#eee;" onclick="closeSettings()">취소</button>
         <button style="flex:1; padding:12px; border-radius:8px; border:none; background:#475569; color:white; font-weight:bold;" onclick="applySettings()">적용하기</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="roster-modal-bg" onclick="closeRoster()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 style="text-align:left; color:#475569;">🚌 차량 번호 배정</h3>
+    <p style="font-size:11px; color:#94a3b8; margin:5px 0 12px; text-align:left; line-height:1.5;">노선 차량 명단을 한 번 저장해 두고, <b>순번 1번</b>과 <b>빠진 차</b>만 지정하면 나머지 순번은 자동으로 채워집니다.</p>
+
+    <div style="text-align:left; margin-bottom:8px;">
+      <button id="r-editBtn" onclick="toggleRosterEdit()" style="padding:6px 10px; font-size:11px; border-radius:6px; border:1px solid #475569; background:#fff; color:#475569;">✏️ 명단 수정</button>
+      <span id="r-count" style="font-size:11px; color:#334155; margin-left:8px;"></span>
+    </div>
+
+    <div id="r-editBox" class="hidden" style="margin-bottom:12px;">
+      <textarea id="r-list" rows="3" placeholder="예)  1, 2, 3, 4 …   또는   7301 7302 7303"
+        style="width:100%; padding:8px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; box-sizing:border-box; resize:vertical;"></textarea>
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button onclick="saveRosterList()" style="flex:1; padding:9px; font-size:11px; font-weight:bold; border-radius:6px; border:none; background:#475569; color:#fff;">명단 저장</button>
+        <button onclick="fillRosterSeq()" style="flex:1; padding:9px; font-size:11px; border-radius:6px; border:1px solid #94a3b8; background:#fff; color:#475569;">1~운행대수 채우기</button>
+      </div>
+      <p style="font-size:10px; color:#94a3b8; margin:6px 0 0; text-align:left;">쉼표·띄어쓰기·줄바꿈으로 구분합니다. 명단은 이 노선의 모든 시간표가 함께 씁니다.</p>
+    </div>
+
+    <div style="text-align:left; font-size:12px; font-weight:bold; color:#334155; margin-bottom:5px;">빠진 차 <span style="font-weight:normal; color:#94a3b8;">(눌러서 제외 / 복귀)</span></div>
+    <div id="r-chips" style="text-align:left; border:1px solid #e2e8f0; border-radius:8px; padding:5px; min-height:46px; margin-bottom:14px; background:#fafbfc;"></div>
+
+    <div class="modal-row"><label style="font-size:13px;">순번 1번 차량</label>
+      <select id="r-start" onchange="onRosterStart(this)" style="width:112px; height:38px; border:2px solid #94a3b8; border-radius:8px; text-align:center; font-size:14px; font-weight:bold;"></select>
+    </div>
+
+    <div class="modal-row"><label style="font-size:13px;">적용 대상</label>
+      <select id="r-target" style="width:112px; height:38px; border:2px solid #94a3b8; border-radius:8px; text-align:center; font-size:13px; font-weight:bold;">
+        <option value="both">오전+오후</option><option value="am">오전만</option><option value="pm">오후만</option>
+      </select>
+    </div>
+
+    <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#475569; text-align:left; margin-bottom:14px; cursor:pointer;">
+      <input type="checkbox" id="r-fit" style="width:17px; height:17px; accent-color:#475569; flex-shrink:0;">
+      <span id="r-fitLabel">운행대수를 사용 가능 대수로 맞추기</span>
+    </label>
+
+    <div style="display:flex; gap:7px;">
+      <button style="flex:1; padding:12px 4px; border-radius:8px; border:none; background:#eee; font-size:13px;" onclick="closeRoster()">닫기</button>
+      <button style="flex:1; padding:12px 4px; border-radius:8px; border:1px solid #cbd5e0; background:#fff; color:#64748b; font-size:13px;" onclick="clearRoster()">🧹 지우기</button>
+      <button style="flex:1.25; padding:12px 4px; border-radius:8px; border:none; background:#1e40af; color:white; font-weight:bold; font-size:13px;" onclick="applyRoster()">자동 배정</button>
     </div>
   </div>
 </div>
@@ -428,6 +483,7 @@ let busCount=16, ratio=0.525, amTrip=3, pmTrip=3, currentView='integrated';
 let _openedAutoTitle=null, _openedAutoSub=null;
 let customTitle='', customSubtitle='';
 const deps={}, tts={}, busNamesAM={}, busNamesPM={};
+let rosterList=[], rosterOut=[], rosterStart='', _rosterEditOpen=false;
 
 function loadData() {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -443,10 +499,13 @@ function loadData() {
         customSubtitle = parsed.customSubtitle || '';
         Object.assign(busNamesAM, parsed.busNamesAM || {});
         Object.assign(busNamesPM, parsed.busNamesPM || {});
+        rosterOut = Array.isArray(parsed.rosterOut) ? parsed.rosterOut.slice() : [];
+        rosterStart = parsed.rosterStart || '';
     }
+    loadRoster();
 }
 
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, amTrip, pmTrip, deps, tts, busNamesAM, busNamesPM, customTitle, customSubtitle })); }
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, amTrip, pmTrip, deps, tts, busNamesAM, busNamesPM, customTitle, customSubtitle, rosterOut, rosterStart })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
@@ -694,6 +753,9 @@ function renderPM(el){
 
 function renderInput(el){
     el.innerHTML = `
+    <div style="padding:8px 8px 0; text-align:center;">
+      <button onclick="openRoster()" style="padding:8px 14px; font-size:12px; font-weight:bold; border-radius:8px; border:1.5px solid #1e40af; background:#eff6ff; color:#1e40af;">🚌 차량 번호 자동 배정</button>
+    </div>
     <div style="display:flex; flex-direction:row; gap:15px; padding:8px; overflow-x:auto; width:100%;">
         <div style="flex:1; min-width:400px;">
             <div style="text-align:center; font-weight:900; margin-bottom:5px; color:#1e40af; background:#e2e8f0; padding:6px; border-radius:4px;">[ 오전 입력 ]</div>
@@ -747,6 +809,142 @@ function applySettings(){
     customSubtitle = (!_sv || _sv === _sAuto || _sv === _openedAutoSub) ? '' : _sv;
     
     closeSettings(); saveData(); schedule=compute(); render();
+}
+
+/* ───── 차량 명단(노선 공용) · 빠진 차/순번1번(시간표별) ───── */
+function rosterKey(){ return 'busRoster_v1_' + busNum; }
+
+function loadRoster(){
+    try {
+        const raw = localStorage.getItem(rosterKey());
+        if (raw) { const o = JSON.parse(raw); if (o && Array.isArray(o.list)) rosterList = o.list.slice(); }
+    } catch(e) {}
+    rosterOut = rosterOut.filter(function(v){ return rosterList.indexOf(v) >= 0; });
+}
+function saveRoster(){
+    try { localStorage.setItem(rosterKey(), JSON.stringify({ list: rosterList })); } catch(e) {}
+}
+function parseRoster(txt){
+    const seen = {}, out = [];
+    const push = function(v){ if (!v || seen[v]) return; seen[v] = 1; out.push(v); };
+    String(txt || '').split(/[\s,;\/·]+/).forEach(function(tok){
+        tok = tok.trim(); if (!tok) return;
+        const rg = tok.match(/^(\d+)\s*[~\-]\s*(\d+)$/);   // 1~16 / 1-16 범위 입력 허용
+        if (rg) {
+            let a = parseInt(rg[1], 10), b = parseInt(rg[2], 10);
+            if (a > b) { const t = a; a = b; b = t; }
+            if (b - a <= 200) { for (let i = a; i <= b; i++) push(String(i)); return; }
+        }
+        push(tok);
+    });
+    return out;
+}
+function rosterAvail(){ return rosterList.filter(function(v){ return rosterOut.indexOf(v) < 0; }); }
+
+function openRoster(){
+    closeSettings();
+    loadRoster();
+    _rosterEditOpen = (rosterList.length === 0);
+    document.getElementById('r-list').value = rosterList.join(', ');
+    document.getElementById('r-target').value = 'both';
+    document.getElementById('r-fit').checked = false;
+    renderRoster();
+    document.getElementById('roster-modal-bg').classList.remove('hidden');
+}
+function closeRoster(){ document.getElementById('roster-modal-bg').classList.add('hidden'); }
+function toggleRosterEdit(){ _rosterEditOpen = !_rosterEditOpen; renderRoster(); }
+
+function renderRoster(){
+    const box = document.getElementById('r-editBox');
+    if (box) box.classList.toggle('hidden', !_rosterEditOpen);
+    const eb = document.getElementById('r-editBtn');
+    if (eb) eb.innerText = _rosterEditOpen ? '✔ 수정 닫기' : '✏️ 명단 수정';
+
+    const avail = rosterAvail();
+    if (avail.indexOf(rosterStart) < 0) rosterStart = avail.length ? avail[0] : '';   // 칩·목록 표시 전에 먼저 확정
+    const cnt = document.getElementById('r-count');
+    if (cnt) cnt.innerHTML = '전체 <b>' + rosterList.length + '</b>대 · 사용 <b>' + avail.length + '</b>대';
+
+    const chips = document.getElementById('r-chips');
+    if (chips) {
+        if (!rosterList.length) {
+            chips.innerHTML = '<span style="font-size:11px; color:#94a3b8;">명단이 없습니다. [✏️ 명단 수정]에서 차량 번호를 입력하세요.</span>';
+        } else {
+            chips.innerHTML = rosterList.map(function(v, i){
+                const isOut = rosterOut.indexOf(v) >= 0;
+                const isFirst = (!isOut && v === rosterStart);
+                return '<span class="rchip' + (isOut ? ' out' : '') + (isFirst ? ' first' : '') +
+                       '" onclick="toggleRosterOut(' + i + ')">' + (isFirst ? '① ' : '') + v + '</span>';
+            }).join('');
+        }
+    }
+
+    const sel = document.getElementById('r-start');
+    if (sel) {
+        sel.innerHTML = avail.map(function(v){
+            return '<option value="' + v + '"' + (v === rosterStart ? ' selected' : '') + '>' + v + '</option>';
+        }).join('');
+    }
+    const fl = document.getElementById('r-fitLabel');
+    if (fl) fl.innerText = '운행대수를 사용 가능 대수(' + avail.length + '대)로 맞추기';
+}
+
+function toggleRosterOut(i){
+    const v = rosterList[i]; if (v == null) return;
+    const k = rosterOut.indexOf(v);
+    if (k >= 0) rosterOut.splice(k, 1); else rosterOut.push(v);
+    saveData(); renderRoster();
+}
+function onRosterStart(el){ rosterStart = el.value; saveData(); renderRoster(); }
+
+function saveRosterList(){
+    const parsed = parseRoster(document.getElementById('r-list').value);
+    if (!parsed.length) { alert('차량 번호를 입력해 주세요.'); return; }
+    rosterList = parsed;
+    rosterOut = rosterOut.filter(function(v){ return rosterList.indexOf(v) >= 0; });
+    if (rosterList.indexOf(rosterStart) < 0) rosterStart = '';
+    saveRoster(); saveData();
+    _rosterEditOpen = false;
+    renderRoster();
+}
+function fillRosterSeq(){
+    const n = Math.max(1, Number(busCount) || 16);
+    const a = []; for (let i = 1; i <= n; i++) a.push(String(i));
+    document.getElementById('r-list').value = a.join(', ');
+}
+
+function applyRoster(){
+    const avail = rosterAvail();
+    if (!avail.length) { alert('사용 가능한 차량이 없습니다.\n명단을 입력하거나 빠진 차를 줄여 주세요.'); return; }
+    const sel = document.getElementById('r-start');
+    if (sel && sel.value) rosterStart = sel.value;
+    let si = avail.indexOf(rosterStart); if (si < 0) si = 0;
+
+    if (document.getElementById('r-fit').checked) { busCount = avail.length; }
+    else if (busCount > avail.length &&
+             !confirm('운행대수는 ' + busCount + '대인데 사용 가능한 차량은 ' + avail.length + '대입니다.\n모자라는 순번은 명단 처음부터 다시 배정합니다.\n계속할까요?')) return;
+
+    const tv = document.getElementById('r-target').value;
+    const maps = (tv === 'am') ? [busNamesAM] : (tv === 'pm') ? [busNamesPM] : [busNamesAM, busNamesPM];
+    maps.forEach(function(m){ Object.keys(m).forEach(function(k){ delete m[k]; }); });
+    for (let b = 1; b <= busCount; b++) {
+        const v = avail[(si + b - 1) % avail.length];
+        maps.forEach(function(m){ m[b] = v; });
+    }
+    saveRoster(); saveData();
+    closeRoster();
+    schedule = compute(); render();
+    alert('순번 1번 = ' + avail[si] + ' 기준으로 ' + busCount + '대를 배정했습니다.' +
+          (rosterOut.length ? '\n제외한 차: ' + rosterOut.join(', ') : ''));
+}
+
+function clearRoster(){
+    const tv = document.getElementById('r-target').value;
+    const label = (tv === 'am') ? '오전' : (tv === 'pm') ? '오후' : '오전·오후';
+    if (!confirm(label + ' 차번호를 모두 지우고 순번 숫자로 되돌릴까요?')) return;
+    const maps = (tv === 'am') ? [busNamesAM] : (tv === 'pm') ? [busNamesPM] : [busNamesAM, busNamesPM];
+    maps.forEach(function(m){ Object.keys(m).forEach(function(k){ delete m[k]; }); });
+    saveData(); closeRoster(); schedule = compute(); render();
 }
 
 function openShareModal() { document.getElementById('share-modal-bg').classList.remove('hidden'); }
