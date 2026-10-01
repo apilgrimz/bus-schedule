@@ -116,7 +116,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v1001-1422</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v1001-1517</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -251,10 +251,9 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
       <input type="checkbox" id="exportRestChk" style="width:18px; height:18px; accent-color:#475569;" onchange="saveExportRestOption()">
       휴식시간 포함
     </label>
-    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#475569; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 (나란히) 전송</button>
+    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#475569; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('integrated')">통합 (오전+오후 나란히) 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#1e40af; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('am')">오전 시간표 전송</button>
     <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#991b1b; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('pm')">오후 시간표 전송</button>
-    <button style="width:100%; padding:14px; margin-bottom:10px; border-radius:8px; background:#0f766e; color:#fff; border:none; font-weight:bold;" onclick="captureAndShare('split')">오전+오후 나란히 전송</button>
     <button style="width:100%; padding:14px; border-radius:8px; background:#e2e8f0; color:#4a5568; border:none;" onclick="closeShareModal()">닫기</button>
   </div>
 </div>
@@ -1186,6 +1185,7 @@ function getActualAmPmTrips() {
 }
 
 function getScheduleHTML(target) {
+    if (target !== 'am' && target !== 'pm') target = 'integrated';   // 임시는 통합이 곧 오전+오후 나란히
     const exportTitle = customTitle || `${busNum}번 배차 시간표(임시)`;
     
     let subtitleText = customSubtitle || `운행대수: ${busCount}대`;
@@ -1367,6 +1367,7 @@ function showPCModal(dataUrl, fileName) {
 }
 
 async function captureAndShare(target) {
+    if (target !== 'am' && target !== 'pm') target = 'integrated';
     closeShareModal();
     const loading = document.createElement('div');
     loading.innerHTML = '<div style="position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; display:flex; align-items:center; justify-content:center; color:white; font-size:18px; font-weight:bold;">이미지 생성 중...</div>';
