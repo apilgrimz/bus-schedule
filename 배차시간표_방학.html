@@ -110,7 +110,7 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v0928-1934</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v1001-1422</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('split')">분리</button>
@@ -170,6 +170,32 @@ table tbody tr.bus-start td.div-top { border-top: 2px solid #ef4444 !important; 
   </div>
 </div>
 
+<div class="modal-bg hidden" id="clip-modal-bg" onclick="closeClip()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 style="text-align:left; color:#475569; margin:0;">📋 <span id="c-name">시간표</span></h3>
+    <p id="c-sub" style="font-size:11px; color:#94a3b8; margin:6px 0 14px; text-align:left;"></p>
+
+    <button onclick="clipCopy()" style="width:100%; padding:12px; font-size:13px; font-weight:bold; border-radius:8px; border:1.5px solid #1e40af; background:#eff6ff; color:#1e40af;">📋 이 시간표 복사하기</button>
+
+    <div style="border-top:1px solid #eee; margin:14px 0 0; padding-top:12px;">
+      <div id="c-paste">
+        <div id="c-clipinfo" style="margin-bottom:9px;"></div>
+        <div id="c-pastebtns" style="display:flex; gap:7px;">
+          <button onclick="clipPaste('new')" style="flex:1; padding:11px 4px; font-size:12px; font-weight:bold; border-radius:8px; border:none; background:#0f766e; color:#fff;">➕ 새 시간표로</button>
+          <button onclick="clipPaste('over')" style="flex:1; padding:11px 4px; font-size:12px; font-weight:bold; border-radius:8px; border:none; background:#b45309; color:#fff;">⤵️ 여기에 덮어쓰기</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #eee; margin:14px 0 0; padding-top:12px; display:flex; gap:7px;">
+      <button onclick="clipRename()" style="flex:1; padding:10px 4px; font-size:12px; border-radius:8px; border:1px solid #cbd5e0; background:#fff; color:#475569;">✏️ 이름 변경</button>
+      <button onclick="clipDelete()" style="flex:1; padding:10px 4px; font-size:12px; border-radius:8px; border:1px solid #fed7d7; background:#fff5f5; color:#e53e3e;">❌ 삭제</button>
+    </div>
+
+    <button onclick="closeClip()" style="width:100%; margin-top:12px; padding:12px; border-radius:8px; border:none; background:#eee;">닫기</button>
+  </div>
+</div>
+
 <div class="modal-bg hidden" id="share-modal-bg" onclick="closeShareModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 style="margin-bottom:20px">📷 시간표 사진 전송</h3>
@@ -211,6 +237,7 @@ document.getElementById('appTitle').innerText = `${busNum}번 ${displayTitle}`;
 
 // URL 의 ?id=N 으로 같은 종류의 시간표를 여러 개 구분해서 저장
 const slotId = new URLSearchParams(location.search).get('id') || '';
+const hasSlotParam = new URLSearchParams(location.search).has('id');
 const slotSuffix = slotId ? ('#' + slotId) : '';
 
 let STORAGE_KEY = 'bus101Data_v2_' + decodeURIComponent(fileName) + slotSuffix;
@@ -223,6 +250,165 @@ const KIND_KEY = displayTitle;                    // 평일 / 토요일 / ...
 const SELF_FILE = decodeURIComponent(fileName);
 
 function slotsStoreKey() { return 'slots_v1_' + busNum + '_' + KIND_KEY; }
+
+/* ═══ 시간표 통째로 복사 / 붙여넣기 ═══════════════════════ */
+const FAMILY = 'std';                 // std = 평일계열, temp = 임시
+const CLIP_KEY = 'busClip_v1';
+let _clipIdx = 0, _menuOpenedAt = 0;
+
+function storageKeyFor(id) {
+    const base = String(STORAGE_KEY).replace(/#[^#]*$/, '');   // 현재 키에서 슬롯 꼬리표만 떼어 재사용
+    return base + (id ? ('#' + id) : '');
+}
+function readClip() {
+    try { const raw = localStorage.getItem(CLIP_KEY); if (raw) return JSON.parse(raw); } catch(e) {}
+    return null;
+}
+function slotSummary(d) {
+    if (!d) return '데이터 없음';
+    const n = Object.keys(d.deps || {}).length;
+    const tr = (FAMILY === 'temp')
+        ? ('오전 ' + (d.amTrip || 0) + '회 / 오후 ' + (d.pmTrip || 0) + '회')
+        : ((d.maxTrip || 0) + '회');
+    return (d.busCount || '?') + '대 · ' + tr + ' · 입력 ' + n + '칸';
+}
+function clipSummary(c) {
+    const d = c.data || {};
+    const n = Object.keys(d.deps || {}).length;
+    const tr = (c.family === 'temp')
+        ? ('오전 ' + (d.amTrip || 0) + '/오후 ' + (d.pmTrip || 0) + '회')
+        : ((d.maxTrip || 0) + '회');
+    return (d.busCount || '?') + '대 · ' + tr + ' · 입력 ' + n + '칸';
+}
+
+function openSlotMenu(idx) {
+    const list = loadSlotList();
+    const s = list[idx]; if (!s) return;
+    _clipIdx = idx; _menuOpenedAt = Date.now();
+    let d = null;
+    try { const raw = localStorage.getItem(storageKeyFor(s.id)); if (raw) d = JSON.parse(raw); } catch(e) {}
+    document.getElementById('c-name').innerText = s.name || KIND_KEY;
+    document.getElementById('c-sub').innerText = KIND_KEY + ' · ' + slotSummary(d);
+    renderClipInfo();
+    document.getElementById('clip-modal-bg').classList.remove('hidden');
+}
+function closeClip() { document.getElementById('clip-modal-bg').classList.add('hidden'); }
+function openSlotMenuCurrent() {
+    const list = loadSlotList();
+    let i = 0;
+    list.forEach(function(s, k){ if (s.id === slotId) i = k; });
+    openSlotMenu(i);
+}
+
+function renderClipInfo() {
+    const c = readClip();
+    const btns = document.getElementById('c-pastebtns');
+    const info = document.getElementById('c-clipinfo');
+    if (!btns || !info) return;
+    if (!c) {
+        info.innerHTML = '<p style="font-size:11px; color:#94a3b8; margin:0; text-align:left;">복사해 둔 시간표가 없습니다.<br>먼저 어느 시간표든 <b>복사하기</b>를 누르세요.</p>';
+        btns.style.display = 'none';
+        return;
+    }
+    btns.style.display = 'flex';
+    const w = c.savedAt ? new Date(c.savedAt) : null;
+    const ws = w ? ((w.getMonth()+1) + '/' + w.getDate() + ' ' + ('0'+w.getHours()).slice(-2) + ':' + ('0'+w.getMinutes()).slice(-2)) : '';
+    info.innerHTML = '<div style="font-size:12px; color:#0f172a; text-align:left; line-height:1.6;">📎 복사해 둔 시간표<br>'
+        + '<b>' + (c.kind || '') + ' · ' + (c.name || '') + '</b>'
+        + '<span style="color:#64748b;"> — ' + clipSummary(c) + (ws ? ' · ' + ws : '') + '</span>'
+        + (c.family !== FAMILY ? '<br><span style="color:#b45309;">※ 형식이 달라 ' + (FAMILY === 'temp' ? '오전·오후 횟수로' : '총 회수로') + ' 자동 변환됩니다.</span>' : '')
+        + ((c.route && c.route !== busNum) ? '<br><span style="color:#b45309;">※ ' + c.route + '번 노선에서 복사한 자료입니다.</span>' : '')
+        + '</div>';
+}
+
+function clipCopy() {
+    const list = loadSlotList(); const s = list[_clipIdx]; if (!s) return;
+    const raw = localStorage.getItem(storageKeyFor(s.id));
+    if (!raw) { alert('이 시간표에는 저장된 내용이 없습니다.'); return; }
+    let d; try { d = JSON.parse(raw); } catch(e) { alert('내용을 읽지 못했습니다.'); return; }
+    try {
+        localStorage.setItem(CLIP_KEY, JSON.stringify({ v: 1, route: busNum, kind: KIND_KEY,
+            family: FAMILY, name: s.name || KIND_KEY, savedAt: new Date().toISOString(), data: d }));
+    } catch(e) { alert('복사하지 못했습니다. 저장 공간을 확인해 주세요.'); return; }
+    renderClipInfo();
+    alert('[ ' + (s.name || KIND_KEY) + ' ] 시간표를 복사했습니다.\n\n붙여넣을 곳(토요일·임시 등)으로 들어가\n시간표 이름을 길게 누르면 붙여넣기가 나옵니다.');
+}
+
+function convertClip(c) {
+    const d = JSON.parse(JSON.stringify(c.data || {}));
+    if (c.family === FAMILY) { d.customTitle = ''; d.customSubtitle = ''; return d; }
+    const out = { busCount: d.busCount || 16, ratio: d.ratio || 0.525,
+                  deps: d.deps || {}, tts: d.tts || {}, customTitle: '', customSubtitle: '' };
+    if (FAMILY === 'temp') {                       // 평일계열 → 임시
+        const total = Math.max(2, d.maxTrip || 6);
+        const am = Math.min(Math.max(1, d.pmTrip || 3), total - 1);
+        out.amTrip = am;
+        out.pmTrip = Math.max(1, total - am);
+        out.busNamesAM = {}; out.busNamesPM = {};
+        out.rosterOut = []; out.rosterStart = '';
+    } else {                                       // 임시 → 평일계열
+        const am = Math.max(1, d.amTrip || 3), pm = Math.max(1, d.pmTrip || 3);
+        out.maxTrip = am + pm;
+        out.pmTrip = Math.min(out.maxTrip, am + 1);
+        out.pmBus = 1;
+        out.crews = [];
+    }
+    return out;
+}
+
+function clipPaste(mode) {
+    const c = readClip(); if (!c) { alert('복사해 둔 시간표가 없습니다.'); return; }
+    const list = loadSlotList();
+    const conv = convertClip(c);
+    if (mode === 'new') {
+        const base = (c.kind === KIND_KEY) ? ((c.name || KIND_KEY) + ' 복사') : (c.kind + ' ' + (c.name || ''));
+        const nm = prompt('새 ' + KIND_KEY + ' 시간표 이름을 입력하세요.', base.trim());
+        if (nm === null) return;
+        const t = nm.trim() || base.trim();
+        const id = 's' + Date.now().toString(36);
+        try { localStorage.setItem(storageKeyFor(id), JSON.stringify(conv)); }
+        catch(e) { alert('저장 공간이 부족합니다.'); return; }
+        list.push({ id: id, name: t });
+        saveSlotList(list);
+        closeClip(); goSlot(id);
+    } else {
+        const s = list[_clipIdx]; if (!s) return;
+        if (!confirm('[ ' + (s.name || KIND_KEY) + ' ]의 지금 내용을 모두 지우고\n[ ' + c.kind + ' · ' + (c.name || '') + ' ](으)로 덮어쓸까요?')) return;
+        try { localStorage.setItem(storageKeyFor(s.id), JSON.stringify(conv)); }
+        catch(e) { alert('저장 공간이 부족합니다.'); return; }
+        closeClip(); goSlot(s.id);
+    }
+}
+
+function clipRename() {
+    const list = loadSlotList(); const s = list[_clipIdx]; if (!s) return;
+    const name = prompt('이 시간표의 이름을 입력하세요.', s.name || KIND_KEY);
+    if (name === null) return;
+    const t = name.trim();
+    if (!t) { alert('이름을 입력해 주세요.'); return; }
+    s.name = t; saveSlotList(list);
+    if (s.id === slotId) document.getElementById('appTitle').innerText = busNum + '번 ' + t;
+    document.getElementById('c-name').innerText = t;
+    renderSlotNav();
+}
+
+function clipDelete() {
+    const list = loadSlotList(); const s = list[_clipIdx]; if (!s) return;
+    if (list.length <= 1) {
+        if (!confirm('[ ' + (s.name || KIND_KEY) + ' ]\n마지막 시간표라 삭제할 수 없습니다.\n입력한 내용만 모두 지울까요?')) return;
+        try { localStorage.removeItem(storageKeyFor(s.id)); } catch(e) {}
+        closeClip(); goSlot(s.id); return;
+    }
+    if (!confirm('[ ' + (s.name || KIND_KEY) + ' ] 시간표를 삭제할까요?\n입력한 시간 데이터도 함께 지워집니다.')) return;
+    try { localStorage.removeItem(storageKeyFor(s.id)); } catch(e) {}
+    const wasCurrent = (s.id === slotId);
+    const rest = list.filter(function(x, i){ return i !== _clipIdx; });
+    saveSlotList(rest);
+    closeClip();
+    goSlot(wasCurrent ? rest[0].id : slotId);
+}
+/* ═══════════════════════════════════════════════════════ */
+
 
 function loadSlotList() {
     try {
@@ -243,8 +429,7 @@ function goSlot(id) {
         const nav = document.getElementById('slotNav');
         if (nav) sessionStorage.setItem('slotScroll_' + KIND_KEY, String(nav.scrollLeft));
     } catch(e) {}
-    const url = id ? (SELF_FILE + '?id=' + encodeURIComponent(id)) : SELF_FILE;
-    location.replace(url);
+    location.replace(SELF_FILE + '?id=' + encodeURIComponent(id || ''));
 }
 function renderSlotNav() {
     const nav = document.getElementById('slotNav');
@@ -259,7 +444,8 @@ function renderSlotNav() {
         b.innerText = slot.name || KIND_KEY;
         b.dataset.idx = idx;
         b.onclick = function(){
-            if (b.dataset.dragging === '1') return;   // 드래그 직후 클릭 방지
+            if (b.dataset.dragging === '1') return;
+            if (Date.now() - _menuOpenedAt < 700) return;   // 메뉴 뜬 직후 이동 방지   // 드래그 직후 클릭 방지
             if (slot.id !== slotId) goSlot(slot.id);
         };
         attachSlotDrag(b, idx);
@@ -272,6 +458,14 @@ function renderSlotNav() {
     edit.title = '현재 시간표 이름 변경';
     edit.onclick = renameCurrentSlot;
     nav.appendChild(edit);
+
+    const clip = document.createElement('button');
+    clip.className = 'nav-btn slot-item';
+    clip.style.cssText = 'background:#eff6ff;color:#1e40af;border-color:#bfdbfe;';
+    clip.innerText = '\uD83D\uDCCB';
+    clip.title = '복사 / 붙여넣기';
+    clip.onclick = openSlotMenuCurrent;
+    nav.appendChild(clip);
 
     const add = document.createElement('button');
     add.className = 'nav-btn slot-add slot-item';
@@ -314,12 +508,12 @@ function renderSlotNav() {
 let _restoredOnce = false;   // 페이지 진입 후 첫 복원 여부
 
 // ── 길게 눌러 순서 변경 ──
-let _dragIdx = null, _dragTimer = null, _dragEl = null;
+let _dragIdx = null, _dragTimer = null, _dragEl = null, _dragMoved = false;
 
 function attachSlotDrag(el, idx) {
     function start(clientX) {
         _dragTimer = setTimeout(function() {
-            _dragIdx = idx; _dragEl = el;
+            _dragIdx = idx; _dragEl = el; _dragMoved = false;
             el.dataset.dragging = '1';
             el.style.opacity = '0.55';
             el.style.transform = 'scale(1.06)';
@@ -361,7 +555,7 @@ function handleDragOver(clientX) {
                 const moved = list.splice(_dragIdx, 1)[0];
                 list.splice(targetIdx, 0, moved);
                 saveSlotList(list);
-                _dragIdx = targetIdx;
+                _dragIdx = targetIdx; _dragMoved = true;
                 renderSlotNav();
                 // 새로 그려진 요소에 드래그 상태 유지
                 const again = document.querySelector('#slotNav .slot-btn-item[data-idx="' + targetIdx + '"]');
@@ -378,6 +572,7 @@ function handleDragOver(clientX) {
 }
 
 function endDrag() {
+    const _openIdx = (_dragIdx !== null && !_dragMoved) ? _dragIdx : null;   // 제자리에서 뗐으면 메뉴
     if (_dragEl) {
         _dragEl.style.opacity = '';
         _dragEl.style.transform = '';
@@ -386,7 +581,8 @@ function endDrag() {
     }
     const nav = document.getElementById('slotNav');
     if (nav) nav.style.overflowX = 'auto';
-    _dragIdx = null; _dragEl = null;
+    _dragIdx = null; _dragEl = null; _dragMoved = false;
+    if (_openIdx !== null) openSlotMenu(_openIdx);
 }
 function addNewSlot() {
     const list = loadSlotList();
@@ -443,7 +639,7 @@ window.addEventListener('DOMContentLoaded', function() {
     // 홈에서 들어왔거나(주소에 id 없음) 해당 슬롯이 사라졌으면
     // 목록 맨 앞 시간표로 이동
     const first = list[0];
-    if (first && first.id !== slotId && (!slotId || !cur)) { goSlot(first.id); return; }
+    if (first && first.id !== slotId && (!hasSlotParam || !cur)) { goSlot(first.id); return; }
 
     if (cur && cur.name) {
         document.getElementById('appTitle').innerText = busNum + '번 ' + cur.name;
