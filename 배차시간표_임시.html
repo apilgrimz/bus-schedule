@@ -42,6 +42,7 @@ body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:
          user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
 .rchip.out { background:#f1f5f9; color:#b6c0cc; border-color:#e2e8f0; text-decoration:line-through; }
 .rchip.first { background:#1e40af; color:#fff; border-color:#1e3a8a; }
+.rchip.rdragging { opacity:.55; transform:scale(1.1); box-shadow:0 2px 6px rgba(0,0,0,.2); }
 .content { flex:1; overflow-y:auto; overflow-x:hidden; background:#f5f5f5; padding-bottom: 40px; }
 
 table { border-collapse:collapse; width:100%; table-layout:fixed; background:#fff; border-bottom: 1px solid #9ca3af !important; border-top: 1px solid #9ca3af !important; }
@@ -116,7 +117,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <body>
 
 <div class="topbar">
-  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v1001-1517</span>
+  <h1 id="appTitle">배차 관리</h1><span id="appVer" style="font-size:10px;color:#94a3b8;margin-left:6px;">v1001-1822</span>
   <div class="tabs">
     <button class="tab active" onclick="switchView('integrated')">통합</button>
     <button class="tab" onclick="switchView('am')">오전</button>
@@ -175,7 +176,7 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
 <div class="modal-bg hidden" id="roster-modal-bg" onclick="closeRoster()">
   <div class="modal" onclick="event.stopPropagation()">
     <h3 style="text-align:left; color:#475569;">🚌 차량 번호 배정</h3>
-    <p style="font-size:11px; color:#94a3b8; margin:5px 0 12px; text-align:left; line-height:1.5;">노선 차량 명단을 한 번 저장해 두고, <b>순번 1번</b>과 <b>빠진 차</b>만 지정하면 나머지 순번은 자동으로 채워집니다.</p>
+    <p style="font-size:11px; color:#94a3b8; margin:5px 0 12px; text-align:left; line-height:1.5;">노선 차량 명단을 한 번 저장해 두고, <b>순번 1번</b>과 <b>빠진 차</b>만 지정하면 나머지 순번은 자동으로 채워집니다. 차량 순서도 이 시간표에서만 임시로 바꿀 수 있습니다.</p>
 
     <div style="text-align:left; margin-bottom:8px;">
       <button id="r-editBtn" onclick="toggleRosterEdit()" style="padding:6px 10px; font-size:11px; border-radius:6px; border:1px solid #475569; background:#fff; color:#475569;">✏️ 명단 수정</button>
@@ -192,7 +193,11 @@ table tbody tr:last-child td { border-bottom: 1px solid #9ca3af !important; }
       <p style="font-size:10px; color:#94a3b8; margin:6px 0 0; text-align:left;">쉼표·띄어쓰기·줄바꿈으로 구분합니다. 명단은 이 노선의 모든 시간표가 함께 씁니다.</p>
     </div>
 
-    <div style="text-align:left; font-size:12px; font-weight:bold; color:#334155; margin-bottom:5px;">빠진 차 <span style="font-weight:normal; color:#94a3b8;">(눌러서 제외 / 복귀)</span></div>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:3px;">
+      <span style="font-size:12px; font-weight:bold; color:#334155;">차량 순서 · 빠진 차</span>
+      <button id="r-reset" onclick="resetRosterOrder()" style="display:none; padding:4px 8px; font-size:10px; border-radius:6px; border:1px solid #cbd5e0; background:#fff; color:#64748b; flex-shrink:0;">↩ 원래 순서</button>
+    </div>
+    <div style="font-size:10px; color:#94a3b8; text-align:left; margin-bottom:5px; line-height:1.4;">눌러서 제외 / 복귀 · 꾹 눌러 끌면 순서 변경(이 시간표에만)</div>
     <div id="r-chips" style="text-align:left; border:1px solid #e2e8f0; border-radius:8px; padding:5px; min-height:46px; margin-bottom:14px; background:#fafbfc;"></div>
 
     <div class="modal-row"><label style="font-size:13px;">순번 1번 차량</label>
@@ -385,7 +390,7 @@ function convertClip(c) {
         out.amTrip = am;
         out.pmTrip = Math.max(1, total - am);
         out.busNamesAM = {}; out.busNamesPM = {};
-        out.rosterOut = []; out.rosterStart = '';
+        out.rosterOut = []; out.rosterStart = ''; out.rosterOrder = [];
     } else {                                       // 임시 → 평일계열
         const am = Math.max(1, d.amTrip || 3), pm = Math.max(1, d.pmTrip || 3);
         out.maxTrip = am + pm;
@@ -679,7 +684,7 @@ let busCount=16, ratio=0.525, amTrip=3, pmTrip=3, currentView='integrated';
 let _openedAutoTitle=null, _openedAutoSub=null;
 let customTitle='', customSubtitle='';
 const deps={}, tts={}, busNamesAM={}, busNamesPM={};
-let rosterList=[], rosterOut=[], rosterStart='', _rosterEditOpen=false;
+let rosterList=[], rosterOut=[], rosterStart='', rosterOrder=[], _rosterEditOpen=false;
 
 function loadData() {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -696,12 +701,13 @@ function loadData() {
         Object.assign(busNamesAM, parsed.busNamesAM || {});
         Object.assign(busNamesPM, parsed.busNamesPM || {});
         rosterOut = Array.isArray(parsed.rosterOut) ? parsed.rosterOut.slice() : [];
+        rosterOrder = Array.isArray(parsed.rosterOrder) ? parsed.rosterOrder.slice() : [];
         rosterStart = parsed.rosterStart || '';
     }
     loadRoster();
 }
 
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, amTrip, pmTrip, deps, tts, busNamesAM, busNamesPM, customTitle, customSubtitle, rosterOut, rosterStart })); }
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ busCount, ratio, amTrip, pmTrip, deps, tts, busNamesAM, busNamesPM, customTitle, customSubtitle, rosterOut, rosterStart, rosterOrder })); }
 function pt(s){if(!s||s==='')return null; const m=String(s).match(/^(\d{1,2}):(\d{2})$/); return m?parseInt(m[1])*60+parseInt(m[2]):null;}
 function fmt(m,h24){if(m==null)return''; if(m==='S')return'S'; const hh=Math.floor(m/60),mm=Math.round(m%60); return `${h24?hh:hh%24}:${mm<10?'0'+mm:mm}`;}
 
@@ -1035,7 +1041,20 @@ function parseRoster(txt){
     });
     return out;
 }
-function rosterAvail(){ return rosterList.filter(function(v){ return rosterOut.indexOf(v) < 0; }); }
+function rosterOrdered(){
+    // 임시 순서가 있으면 그 순서로, 명단에만 있는 차는 뒤에 원순서대로 붙임
+    const seen = {}, out = [];
+    (rosterOrder || []).forEach(function(v){ if (rosterList.indexOf(v) >= 0 && !seen[v]) { seen[v] = 1; out.push(v); } });
+    rosterList.forEach(function(v){ if (!seen[v]) { seen[v] = 1; out.push(v); } });
+    return out;
+}
+function rosterReordered(){
+    const o = rosterOrdered();
+    for (let i = 0; i < o.length; i++) if (o[i] !== rosterList[i]) return true;
+    return false;
+}
+function rosterAvail(){ return rosterOrdered().filter(function(v){ return rosterOut.indexOf(v) < 0; }); }
+function resetRosterOrder(){ rosterOrder = []; saveData(); renderRoster(); }
 
 function openRoster(){
     closeSettings();
@@ -1066,14 +1085,23 @@ function renderRoster(){
         if (!rosterList.length) {
             chips.innerHTML = '<span style="font-size:11px; color:#94a3b8;">명단이 없습니다. [✏️ 명단 수정]에서 차량 번호를 입력하세요.</span>';
         } else {
-            chips.innerHTML = rosterList.map(function(v, i){
+            chips.innerHTML = rosterOrdered().map(function(v, i){
                 const isOut = rosterOut.indexOf(v) >= 0;
                 const isFirst = (!isOut && v === rosterStart);
                 return '<span class="rchip' + (isOut ? ' out' : '') + (isFirst ? ' first' : '') +
-                       '" onclick="toggleRosterOut(' + i + ')">' + (isFirst ? '① ' : '') + v + '</span>';
+                       '" data-i="' + i + '">' + (isFirst ? '① ' : '') + v + '</span>';
             }).join('');
+            Array.prototype.forEach.call(chips.querySelectorAll('.rchip'), function(el, i){
+                el.addEventListener('click', function(){
+                    if (el.dataset.rdrag === '1') return;      // 끌었다 놓은 직후엔 제외/복귀 안 함
+                    toggleRosterOut(i);
+                });
+                attachChipDrag(el, i);
+            });
         }
     }
+    const rs = document.getElementById('r-reset');
+    if (rs) rs.style.display = rosterReordered() ? '' : 'none';
 
     const sel = document.getElementById('r-start');
     if (sel) {
@@ -1086,12 +1114,74 @@ function renderRoster(){
 }
 
 function toggleRosterOut(i){
-    const v = rosterList[i]; if (v == null) return;
+    const v = rosterOrdered()[i]; if (v == null) return;
     const k = rosterOut.indexOf(v);
     if (k >= 0) rosterOut.splice(k, 1); else rosterOut.push(v);
     saveData(); renderRoster();
 }
 function onRosterStart(el){ rosterStart = el.value; saveData(); renderRoster(); }
+
+/* ── 칩을 꾹 눌러 끌면 순서를 임시로 바꿈 (명단 원순서는 그대로) ── */
+let _rcIdx = null, _rcTimer = null, _rcEl = null;
+
+function attachChipDrag(el, i) {
+    function start() {
+        _rcTimer = setTimeout(function() {
+            _rcIdx = i; _rcEl = el;
+            el.dataset.rdrag = '1';
+            el.classList.add('rdragging');
+            try { const sel = window.getSelection(); if (sel && sel.removeAllRanges) sel.removeAllRanges(); } catch(e) {}
+            const box = document.getElementById('r-chips');
+            if (box) box.style.touchAction = 'none';
+            if (navigator.vibrate) { try { navigator.vibrate(30); } catch(e) {} }
+        }, 450);
+    }
+    function cancelT() { if (_rcTimer) { clearTimeout(_rcTimer); _rcTimer = null; } }
+
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    el.addEventListener('touchstart', function(){ start(); }, {passive:true});
+    el.addEventListener('mousedown', function(e){ e.preventDefault(); start(); });
+    el.addEventListener('touchmove', function(e){
+        if (_rcIdx === null) { cancelT(); return; }
+        e.preventDefault();
+        chipDragOver(e.touches[0].clientX, e.touches[0].clientY);
+    }, {passive:false});
+    el.addEventListener('touchend', function(){ cancelT(); endChipDrag(); }, {passive:true});
+    el.addEventListener('touchcancel', function(){ cancelT(); endChipDrag(); }, {passive:true});
+    el.addEventListener('mouseup', function(){ cancelT(); endChipDrag(); });
+    el.addEventListener('mouseleave', function(){ cancelT(); });
+}
+
+function chipDragOver(x, y) {
+    if (_rcIdx === null) return;
+    const hit = document.elementFromPoint(x, y);
+    const chip = hit && hit.closest ? hit.closest('#r-chips .rchip') : null;
+    if (!chip || chip.dataset.i === undefined) return;
+    const to = Number(chip.dataset.i);
+    if (to === _rcIdx) return;
+    const ord = rosterOrdered();
+    const moved = ord.splice(_rcIdx, 1)[0];
+    ord.splice(to, 0, moved);
+    rosterOrder = ord;
+    _rcIdx = to;
+    saveData();
+    renderRoster();
+    const again = document.querySelector('#r-chips .rchip[data-i="' + to + '"]');
+    if (again) { _rcEl = again; again.dataset.rdrag = '1'; again.classList.add('rdragging'); }
+}
+
+function endChipDrag() {
+    if (_rcEl) {
+        _rcEl.classList.remove('rdragging');
+        const e0 = _rcEl;
+        setTimeout(function(){ if (e0) e0.dataset.rdrag = '0'; }, 80);
+    }
+    const box = document.getElementById('r-chips');
+    if (box) box.style.touchAction = '';
+    const was = (_rcIdx !== null);
+    _rcIdx = null; _rcEl = null;
+    if (was) renderRoster();
+}
 
 function saveRosterList(){
     const parsed = parseRoster(document.getElementById('r-list').value);
